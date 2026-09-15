@@ -1,8 +1,6 @@
 name: Install completed Relay source
 on:
-  push:
-    branches: [main]
-    paths: [relay-complete.tgz]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -14,9 +12,9 @@ jobs:
           fetch-depth: 0
       - name: Replace transfer files with completed source
         run: |
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name relay-complete.tgz -exec rm -rf {} +
-          tar -xzf relay-complete.tgz
-          rm relay-complete.tgz
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name 1-relay-complete.tgz -exec rm -rf {} +
+          tar -xzf 1-relay-complete.tgz
+          rm 1-relay-complete.tgz
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
