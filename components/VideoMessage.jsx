@@ -102,7 +102,7 @@ export default function VideoMessage({
         ) : null}
         {boxWidth ? (
           <Image
-            source={{ uri: attachment.thumbnailUri || attachment.uri }}
+            source={{ uri: attachment.thumbnailUri || attachment.uri, headers: attachment.headers }}
             style={[StyleSheet.absoluteFillObject, cornerStyle]}
             resizeMode="cover"
             onLoadEnd={() => setThumbLoaded(true)}

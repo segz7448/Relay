@@ -2,7 +2,7 @@
 // The "session token" is a JWT issued by the Cloudflare Worker.
 // auth.js is the low-level store; accountsStore.js is the high-level one.
 
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './utils/secureStore';
 import { setSessionToken } from './api';
 
 const KEY = 'botmanager_session_token';

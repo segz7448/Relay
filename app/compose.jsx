@@ -1,48 +1,40 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, type, space, radius } from '../theme';
+import { useMemo } from 'react';
+import { type, space, radius, useTheme } from '../theme';
 
+// Every entry here routes to a real destination. Anything without a real
+// backend behind it (e.g. a "New Group" flow — there is no group
+// membership model in the Worker) is deliberately not listed, rather
+// than shown as a button that silently does nothing.
 const OPTIONS = [
-  { key: 'direct', icon: 'person-outline', label: 'New 1-v-1 Message' },
-  { key: 'bot-convo', icon: 'hardware-chip-outline', label: 'New Bot Conversation' },
-  { key: 'group', icon: 'people-outline', label: 'New Group' },
-  { key: 'relay', icon: 'git-network-outline', label: 'New Server Relay' },
-  { key: 'search-users', icon: 'search-outline', label: 'Search Users' },
-  { key: 'search-bots', icon: 'search-outline', label: 'Search Bots' },
-  { key: 'create-bot', icon: 'add-circle-outline', label: 'Create Bot' },
+  // Opens Search on the People tab: pick someone you already know and a
+  // direct conversation with them opens (see app/search.jsx).
+  { key: 'direct', icon: 'person-outline', label: 'New Message', route: '/search?tab=usernames' },
+  // Opens Search on the Bots tab: pick one of your bots to open its
+  // conversation.
+  { key: 'bot-convo', icon: 'hardware-chip-outline', label: 'New Bot Conversation', route: '/search?tab=bots' },
+  { key: 'search', icon: 'search-outline', label: 'Search Everything', route: '/search' },
+  { key: 'create-bot', icon: 'add-circle-outline', label: 'Create Bot', route: '/create-bot' },
+  // Server Relay is read-only — this opens the relay list, never a
+  // create/edit flow (see app/(tabs)/relay.jsx).
+  { key: 'relay', icon: 'git-network-outline', label: 'Server Relay', route: '/relay' },
 ];
 
 export default function ComposeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const router = useRouter();
-
-  function choose(key) {
-    switch (key) {
-      case 'create-bot':
-        router.replace('/create-bot');
-        return;
-      case 'relay':
-        router.replace('/relay');
-        return;
-      case 'search-bots':
-        router.back();
-        // The bots search field already lives on the Messages/relay lists —
-        // no dedicated search screen exists yet for this shortcut.
-        return;
-      default:
-        // 1-v-1, bot conversation, group, and user search don't have a
-        // destination screen yet — this menu just wires up the entry point.
-        router.back();
-        return;
-    }
-  }
-
   return (
     <View style={styles.screen}>
       {OPTIONS.map((o) => (
         <Pressable
           key={o.key}
-          onPress={() => choose(o.key)}
+          onPress={() => router.replace(o.route)}
+          accessibilityRole="button"
+          accessibilityLabel={o.label}
           style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfaceRaised }]}
         >
           <View style={styles.icon}>
@@ -56,7 +48,7 @@ export default function ComposeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: space.md },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: space.md,

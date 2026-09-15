@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { space, useTheme } from '../theme';
 import SettingsSection from '../components/SettingsSection';
 import SettingsRow from '../components/SettingsRow';
 import ActionSheet from '../components/ActionSheet';
 import { useNotificationPrefs, SOUND_OPTIONS } from '../notificationPrefs';
+import { useNotifications } from '../notifications';
 
 export default function NotificationsSettingsScreen() {
   const { colors } = useTheme();
   const { prefs, setPref } = useNotificationPrefs();
+  const { unreadCount } = useNotifications();
+  const router = useRouter();
   const [soundSheet, setSoundSheet] = useState(false);
 
   // Sound/vibration/previews only matter if at least one category of
@@ -26,6 +30,17 @@ export default function NotificationsSettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl * 3 }}>
+        <SettingsSection>
+          <SettingsRow
+            icon="notifications"
+            iconColor="#E5883D"
+            label="In-app inbox"
+            value={unreadCount ? `${unreadCount} unread` : 'All caught up'}
+            onPress={() => router.push('/notifications')}
+            chevron
+          />
+        </SettingsSection>
+
         <SettingsSection
           title="Notifications"
           footer="Turn off a category to stop getting alerts for it — you'll still see it inside the app."

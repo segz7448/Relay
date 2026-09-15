@@ -80,7 +80,7 @@ export default function VoiceMessage({
       try {
         if (!soundRef.current) {
           const { sound } = await Audio.Sound.createAsync(
-            { uri: attachment.uri },
+            { uri: attachment.uri, headers: attachment.headers },
             { shouldPlay: true, rate: speed, positionMillis: position * 1000 },
             onPlaybackStatus
           );

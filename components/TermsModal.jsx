@@ -1,10 +1,14 @@
+import { useMemo } from 'react';
 import { Modal, View, Text, ScrollView, StyleSheet } from 'react-native';
 import { IconGhostButton } from './Button';
-import { colors, type, space, radius } from '../theme';
+import { type, space, radius, useTheme } from '../theme';
 
 // Placeholder legal copy — swap for the real Terms/Privacy content
 // whenever that's written; the modal shell and animation stay the same.
 export default function TermsModal({ visible, onClose, title, body }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -22,7 +26,7 @@ export default function TermsModal({ visible, onClose, title, body }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.surface,

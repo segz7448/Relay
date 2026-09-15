@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { View, TextInput, Animated, StyleSheet } from 'react-native';
-import { colors, type, radius, space } from '../theme';
+import { type, radius, space, useTheme } from '../theme';
 
 // Six-box verification code entry. `value`/`onChange` are lifted to the
 // parent screen; `error`/`success` drive the shake and green-pulse states.
 export default function OtpInput({ length = 6, value, onChange, error, success, autoFocus = true }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const inputs = useRef([]);
   const shake = useRef(new Animated.Value(0)).current;
   const pops = useRef(Array.from({ length }, () => new Animated.Value(1))).current;
@@ -80,7 +83,7 @@ export default function OtpInput({ length = 6, value, onChange, error, success, 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md },
   box: {
     width: 46,

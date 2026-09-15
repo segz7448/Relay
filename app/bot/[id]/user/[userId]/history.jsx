@@ -3,11 +3,15 @@ import { View, Text, FlatList, Pressable, StyleSheet, KeyboardAvoidingView, Plat
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { type, space, avatarPalette, useTheme } from '../../../../../theme';
-import { fetchBot, fetchBotUser } from '../../../../../botsApi';
+import { fetchBot, fetchBotUser, uploadBotFile } from '../../../../../botsApi';
 import { fetchUserMessages, sendUserMessage } from '../../../../../botUserMessagesApi';
+import { authHeaders, resolveAuthedUri } from '../../../../../utils/attachments';
 import MessageBubble from '../../../../../components/MessageBubble';
 import Composer from '../../../../../components/Composer';
+import AttachmentSheet from '../../../../../components/AttachmentSheet';
 import { SkeletonBox, SkeletonCircle } from '../../../../../components/Skeleton';
 import { EmptyState, ErrorState } from '../../../../../components/StateViews';
 import { useToast } from '../../../../../components/Toast';
@@ -31,6 +35,32 @@ export default function BotUserHistoryScreen() {
   const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [phase, setPhase] = useState('loading'); // 'loading' | 'ready' | 'error'
+  const [attachOpen, setAttachOpen] = useState(false);
+
+  // Server rows carry attachment as { url, kind } (GET) or
+  // attachmentUrl/attachmentType (POST response). Both become the
+  // MessageBubble attachment shape, with the URL made renderable.
+  async function normalizeMessages(rows) {
+    return Promise.all((rows ?? []).map(async (m) => {
+      const rawUrl = m.attachment?.url ?? m.attachmentUrl ?? null;
+      const kind = m.attachment?.kind ?? m.attachmentType ?? null;
+      const base = {
+        id: m.id, dir: m.dir, text: m.text ?? null,
+        createdAt: m.createdAt, status: m.status,
+        attachment: null,
+      };
+      if (!rawUrl) return base;
+      const attachment = { url: rawUrl, kind: kind ?? 'file', uri: null, headers: undefined };
+      try {
+        attachment.uri = await resolveAuthedUri(rawUrl);
+        attachment.headers = authHeaders();
+      } catch {
+        // Leave uri null — the bubble falls back to its file/icon row
+        // rather than showing a broken image.
+      }
+      return { ...base, attachment };
+    }));
+  }
 
   const load = useCallback(async () => {
     try {
@@ -41,7 +71,7 @@ export default function BotUserHistoryScreen() {
       ]);
       setBot(b);
       setUser(u);
-      setMessages(m);
+      setMessages(await normalizeMessages(m));
       setPhase('ready');
     } catch (e) {
       setPhase('error');
@@ -70,6 +100,60 @@ export default function BotUserHistoryScreen() {
         setMessages((list) => list.map((m) => (m.id === optimistic.id ? { ...m, status: 'failed' } : m)));
         toast.error("Message couldn't be sent");
       });
+  }
+
+  // Picked/recorded asset -> real bot file upload -> real outbound
+  // message referencing it. MIME types are the ones the Worker
+  // whitelists (BOT_FILE_TYPES in worker/src/routes/bots.ts); anything
+  // else fails server-side and surfaces as a toast, never a fake success.
+  async function sendAttachment(asset, kind) {
+    const optimistic = {
+      id: `um_local_${Date.now()}`, dir: 'out', text: null, createdAt: Date.now(), status: 'sending',
+      attachment: {
+        uri: asset.uri, kind,
+        name: asset.name, ext: asset.ext ?? (asset.name ?? '').split('.').pop() ?? '',
+        size: asset.size, duration: asset.duration, waveform: asset.waveform,
+      },
+    };
+    setMessages((list) => [...list, optimistic]);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+    try {
+      // expo-av records m4a; the Worker's audio whitelist is
+      // audio/mpeg + audio/mp4, and m4a *is* MP4 audio.
+      const mime = asset.mime === 'audio/m4a' || asset.mime === 'audio/x-m4a' ? 'audio/mp4' : asset.mime;
+      const uploaded = await uploadBotFile(id, { uri: asset.uri, name: asset.name, mime }, userId);
+      const saved = await sendUserMessage(id, userId, { attachmentUrl: uploaded.url, attachmentType: kind });
+      setMessages((list) => list.map((m) => (m.id === optimistic.id
+        ? { ...m, id: saved.id, createdAt: saved.createdAt ?? m.createdAt, status: saved.status ?? 'delivered' }
+        : m)));
+    } catch (e) {
+      setMessages((list) => list.map((m) => (m.id === optimistic.id ? { ...m, status: 'failed' } : m)));
+      toast.error(e.message || "Couldn't send attachment");
+    }
+  }
+
+  async function handleAttachSelect(key) {
+    try {
+      if (key === 'photo') {
+        const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
+        const a = r.assets?.[0];
+        if (!r.canceled && a) await sendAttachment({ uri: a.uri, name: a.fileName ?? 'photo.jpg', mime: a.mimeType ?? 'image/jpeg' }, 'image');
+      } else if (key === 'video') {
+        const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Videos });
+        const a = r.assets?.[0];
+        if (!r.canceled && a) await sendAttachment({ uri: a.uri, name: a.fileName ?? 'video.mp4', mime: a.mimeType ?? 'video/mp4' }, 'video');
+      } else if (key === 'document' || key === 'file') {
+        const r = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false });
+        const a = r.assets?.[0];
+        if (!r.canceled && a) await sendAttachment({ uri: a.uri, name: a.name ?? 'file', mime: a.mimeType ?? 'application/octet-stream' }, 'file');
+      } else if (key === 'audio') {
+        const r = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false, type: 'audio/*' });
+        const a = r.assets?.[0];
+        if (!r.canceled && a) await sendAttachment({ uri: a.uri, name: a.name ?? 'audio.mp3', mime: a.mimeType ?? 'audio/mpeg' }, 'audio');
+      }
+    } catch (e) {
+      toast.error(e.message || "Couldn't attach that file");
+    }
   }
 
   const avatarColor = user ? hashColor(user.id) : colors.surfaceRaised;
@@ -153,8 +237,19 @@ export default function BotUserHistoryScreen() {
           }
         />
 
-        <Composer onSend={handleSend} onAttach={() => {}} />
+        <Composer
+          onSend={handleSend}
+          onAttach={() => setAttachOpen(true)}
+          onVoice={(attachment) => sendAttachment(attachment, 'voice')}
+        />
       </KeyboardAvoidingView>
+
+      <AttachmentSheet
+        visible={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        onSelect={handleAttachSelect}
+        keys={['photo', 'video', 'document', 'audio']}
+      />
     </View>
   );
 }

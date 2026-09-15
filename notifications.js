@@ -7,15 +7,45 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import * as SecureStore from './utils/secureStore';
 import { Platform } from 'react-native';
+import { router } from 'expo-router';
 import { api } from './api';
+import { PREFS_KEY } from './notificationPrefs';
+
+// Map a push payload's data.type to the on-device preference category
+// that governs it (see notificationPrefs.js). The handler below reads
+// the real persisted prefs, so the category toggles in Settings ->
+// Notifications genuinely silence their category instead of being
+// cosmetic switches.
+const TYPE_TO_PREF = {
+  message: 'messageNotifications',
+  bot_alert: 'botNotifications',
+  server: 'serverNotifications',
+  relay: 'serverNotifications',
+  incoming_call: 'callNotifications',
+};
+
+async function readPrefs() {
+  try {
+    const raw = await SecureStore.getItemAsync(PREFS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const prefs = await readPrefs();
+    const type = notification?.request?.content?.data?.type;
+    const categoryOn = TYPE_TO_PREF[type] ? prefs[TYPE_TO_PREF[type]] !== false : true;
+    return {
+      shouldShowAlert: categoryOn,
+      shouldPlaySound: categoryOn && prefs.sound !== 'None',
+      shouldSetBadge: categoryOn && prefs.notificationBadge !== false,
+    };
+  },
 });
 
 const NotificationsContext = createContext(null);
@@ -28,17 +58,22 @@ export function NotificationsProvider({ children }) {
 
   const addItem = useCallback((notification) => {
     const { title, body, data } = notification.request?.content ?? notification;
-    setItems((prev) => [
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title,
-        body,
-        data,
-        read: false,
-        receivedAt: Date.now(),
-      },
-      ...prev,
-    ]);
+    // Honor the "In-app notifications" preference: when off, the system
+    // alert still shows but nothing is added to the in-app inbox.
+    readPrefs().then((prefs) => {
+      if (prefs.inAppNotifications === false) return;
+      setItems((prev) => [
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          title,
+          body,
+          data,
+          read: false,
+          receivedAt: Date.now(),
+        },
+        ...prev,
+      ]);
+    });
   }, []);
 
   const requestPermissionAndRegister = useCallback(async () => {
@@ -120,12 +155,14 @@ export function NotificationsProvider({ children }) {
     // Handle notification taps (app backgrounded or killed)
     responseListenerRef.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
+        // Tapping a system notification takes the user to the thing it
+        // was about, using the ids the Worker puts in the payload
+        // (worker/src/lib/fcm.ts).
         const { data } = response.notification.request.content;
-        // Navigation from notification tap is handled by Expo Router's
-        // deep-link support — the `data` object carries a `type` + relevant
-        // id (conversationId, botId, contactId) that the app can route to.
         if (data?.conversationId) {
-          // expo-router can handle this via a URL if you set one up
+          router.push(`/conversation/${data.conversationId}`);
+        } else if (data?.botId) {
+          router.push(`/bot/${data.botId}`);
         }
       }
     );

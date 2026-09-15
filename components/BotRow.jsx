@@ -6,6 +6,8 @@ export default function BotRow({ bot, onPress }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${bot.name}, @${bot.username}`}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfaceRaised }]}
     >
       <View style={styles.avatar}>

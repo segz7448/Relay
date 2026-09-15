@@ -7,9 +7,10 @@ import { type, space, radius, useTheme } from '../theme';
 
 // route.name -> icon pair + label. Outline for inactive, filled for the
 // active tab — a small premium touch instead of a static icon set.
+// Only real, routable tabs belong here — a config entry without a route
+// would render nothing, and a route without an entry renders nothing.
 const TAB_CONFIG = {
   index: { label: 'Messages', outline: 'chatbubbles-outline', filled: 'chatbubbles' },
-  calls: { label: 'Calls', outline: 'call-outline', filled: 'call' },
   relay: { label: 'Relay', outline: 'server-outline', filled: 'server' },
   settings: { label: 'Settings', outline: 'settings-outline', filled: 'settings' },
 };
@@ -20,7 +21,7 @@ function TabChip({ focused, config, badge, onPress, colors, styles }) {
   const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }).start();
 
   return (
-    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={styles.item} hitSlop={4}>
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={styles.item} hitSlop={4} accessibilityRole="button" accessibilityLabel={`${config.label} tab`} accessibilityState={{ selected: focused }}>
       <Animated.View style={{ transform: [{ scale }] }}>
         <View style={[styles.chip, focused && styles.chipActive]}>
           <Ionicons
@@ -68,7 +69,9 @@ export default function GlassTabBar({ state, navigation, unreadCount = 0 }) {
                 key={route.key}
                 focused={focused}
                 config={config}
-                badge={route.name === 'calls' ? unreadCount : 0}
+                // Unread push notifications badge on the tab that holds
+                // the in-app inbox (Settings -> Notifications).
+                badge={route.name === 'settings' ? unreadCount : 0}
                 onPress={onPress}
                 colors={colors}
                 styles={styles}

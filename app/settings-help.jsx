@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View, Text, Pressable, Linking, Alert, Animated, Easing, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, Pressable, Linking, Animated, Easing, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { type, space, useTheme } from '../theme';
 import SettingsSection from '../components/SettingsSection';
 import SettingsRow from '../components/SettingsRow';
 import { SUPPORT_EMAIL } from '../legalCopy';
 import { hapticTap } from '../utils/haptics';
+import { useToast } from '../components/Toast';
 import { durations } from '../utils/motion';
 
 const FAQ = [
@@ -76,6 +78,7 @@ export default function HelpScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const [openIndex, setOpenIndex] = useState(null);
+  const toast = useToast();
 
   async function handleContactSupport() {
     const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Botmanager support')}`;
@@ -84,7 +87,10 @@ export default function HelpScreen() {
       if (!supported) throw new Error('no mail client');
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Contact Support', `Reach us at ${SUPPORT_EMAIL}`);
+      // No usable mail client — copy the address instead, which works
+      // on every platform (Alert.alert is a silent no-op on web).
+      await Clipboard.setStringAsync(SUPPORT_EMAIL);
+      toast.info(`Support email copied: ${SUPPORT_EMAIL}`);
     }
   }
 

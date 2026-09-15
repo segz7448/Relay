@@ -5,23 +5,28 @@ import { space, radius, type, useTheme } from '../theme';
 import VoiceRecorder from './VoiceRecorder';
 import EmojiPickerSheet from './EmojiPickerSheet';
 
-function RoundButton({ icon, onPress, size = 30, color, filled }) {
+function RoundButton({ icon, onPress, size = 30, color, filled, label, disabled }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const scale = useRef(new Animated.Value(1)).current;
-  const onPressIn = () => Animated.spring(scale, { toValue: 0.86, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
-  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }).start();
+  const onPressIn = () => !disabled && Animated.spring(scale, { toValue: 0.86, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  const onPressOut = () => !disabled && Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }).start();
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
-        onPress={onPress}
+        onPress={disabled ? undefined : onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: !!disabled }}
         hitSlop={8}
         style={[
           styles.roundBtn,
           { width: size, height: size, borderRadius: size / 2 },
           filled && { backgroundColor: colors.accent },
+          disabled && { opacity: 0.35 },
         ]}
       >
         <Ionicons name={icon} size={size * 0.56} color={filled ? colors.onAccent : color ?? colors.textSecondary} />
@@ -90,7 +95,9 @@ export default function Composer({ onSend, onAttach, onVoice, replyingTo, onCanc
       ) : null}
 
       <View style={styles.row}>
-        {!recordingActive ? <RoundButton icon="add" onPress={onAttach} size={32} /> : null}
+        {/* The attach button is rendered only when the host screen really
+            handles attachments — never as a dead "+" that swallows taps. */}
+        {!recordingActive && onAttach ? <RoundButton icon="add" onPress={onAttach} size={32} label="Add attachment" /> : null}
 
         {!recordingActive ? (
           <View style={styles.inputWrap}>
@@ -102,14 +109,16 @@ export default function Composer({ onSend, onAttach, onVoice, replyingTo, onCanc
               style={styles.input}
               multiline
             />
-            <RoundButton icon="happy-outline" onPress={() => setEmojiPickerOpen(true)} size={26} color={colors.textMuted} />
+            <RoundButton icon="happy-outline" onPress={() => setEmojiPickerOpen(true)} size={26} color={colors.textMuted} label="Insert emoji" />
           </View>
         ) : null}
 
         {hasText ? (
-          <RoundButton icon="arrow-up" onPress={submit} size={32} filled />
-        ) : (
+          <RoundButton icon="arrow-up" onPress={submit} size={32} filled label="Send message" />
+        ) : onVoice ? (
           <VoiceRecorder onFinish={onVoice} onActiveChange={setRecordingActive} />
+        ) : (
+          <RoundButton icon="arrow-up" size={32} filled disabled label="Send message" />
         )}
       </View>
 

@@ -71,6 +71,7 @@ function RootLayoutNav() {
         <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile', presentation: 'modal' }} />
         <Stack.Screen name="settings-appearance" options={{ title: 'Appearance' }} />
         <Stack.Screen name="settings-notifications" options={{ title: 'Notifications and Sounds' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="settings-privacy" options={{ title: 'Privacy and Security' }} />
         <Stack.Screen name="settings-privacy-rules" options={{ title: 'Privacy' }} />
         <Stack.Screen name="settings-blocked-users" options={{ title: 'Blocked Users' }} />

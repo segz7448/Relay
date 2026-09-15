@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, type, space, radius } from '../theme';
+import { type, space, radius, useTheme } from '../theme';
 
 // Same component the rest of the app already uses (create-bot, bot/edit,
 // the bots search field) — extended with an optional leading icon, a
@@ -26,6 +26,9 @@ export default function Field({
   onFocus,
   onBlur,
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [revealed, setRevealed] = useState(false);
   const focusAnim = useRef(new Animated.Value(0)).current;
 
@@ -77,7 +80,7 @@ export default function Field({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   wrap: { marginBottom: space.lg },
   label: { ...type.small, color: colors.textSecondary, marginBottom: space.xs, fontWeight: '600' },
   inputRow: {

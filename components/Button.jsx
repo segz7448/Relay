@@ -38,7 +38,7 @@ function Dots({ color }) {
   );
 }
 
-export function PrimaryButton({ label, onPress, disabled, loading, icon }) {
+export function PrimaryButton({ label, onPress, disabled, loading, icon, accessibilityLabel }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { scale, onPressIn, onPressOut } = usePressScale();
@@ -50,6 +50,9 @@ export function PrimaryButton({ label, onPress, disabled, loading, icon }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         disabled={inactive}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ disabled: inactive, busy: !!loading }}
         style={[styles.primary, inactive && styles.disabled]}
       >
         {loading ? (
@@ -65,7 +68,7 @@ export function PrimaryButton({ label, onPress, disabled, loading, icon }) {
   );
 }
 
-export function SecondaryButton({ label, onPress, disabled, loading, icon }) {
+export function SecondaryButton({ label, onPress, disabled, loading, icon, accessibilityLabel }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { scale, onPressIn, onPressOut } = usePressScale();
@@ -77,6 +80,9 @@ export function SecondaryButton({ label, onPress, disabled, loading, icon }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         disabled={inactive}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ disabled: inactive, busy: !!loading }}
         style={[styles.secondary, inactive && { opacity: 0.5 }]}
       >
         {loading ? (
@@ -93,14 +99,14 @@ export function SecondaryButton({ label, onPress, disabled, loading, icon }) {
 }
 
 // Plain-text tappable link — "Forgot password?", "Resend code", etc.
-export function TextLink({ label, onPress, disabled, muted, align = 'center' }) {
+export function TextLink({ label, onPress, disabled, muted, align = 'center', accessibilityLabel }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const opacity = useRef(new Animated.Value(1)).current;
   const onPressIn = () => Animated.timing(opacity, { toValue: 0.55, duration: 80, useNativeDriver: true }).start();
   const onPressOut = () => Animated.timing(opacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
   return (
-    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} disabled={disabled} hitSlop={8}>
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }}>
       <Animated.Text
         style={[
           styles.link,
@@ -114,7 +120,7 @@ export function TextLink({ label, onPress, disabled, muted, align = 'center' }) 
 }
 
 // Small circular icon button — used for the back chevron on auth sub-screens.
-export function IconGhostButton({ icon, onPress, size = 38 }) {
+export function IconGhostButton({ icon, onPress, size = 38, label = 'Back' }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { scale, onPressIn, onPressOut } = usePressScale(0.9);
@@ -124,6 +130,8 @@ export function IconGhostButton({ icon, onPress, size = 38 }) {
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
         style={[styles.ghost, { width: size, height: size, borderRadius: size / 2 }]}
       >
         <Ionicons name={icon} size={19} color={colors.textPrimary} />

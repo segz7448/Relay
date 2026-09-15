@@ -1,0 +1,52 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_WORKER_URL: ${{ vars.CLOUDFLARE_WORKER_URL }}
+      GOOGLE_SERVICES_FILE: ${{ github.workspace }}/google-services.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Check required Android build configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_WORKER_URL" || { echo 'Missing repository variable CLOUDFLARE_WORKER_URL'; exit 1; }
+          test -n "${{ secrets.FCM_GOOGLE_SERVICES_JSON_BASE64 }}" || { echo 'Missing Actions secret FCM_GOOGLE_SERVICES_JSON_BASE64'; exit 1; }
+      - name: Restore Firebase Android configuration
+        shell: bash
+        run: printf '%s' '${{ secrets.FCM_GOOGLE_SERVICES_JSON_BASE64 }}' | base64 --decode > "$GOOGLE_SERVICES_FILE"
+      - run: npm ci
+      - run: npm run parity
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --non-interactive --no-install
+      - name: Build installable APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: relay-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

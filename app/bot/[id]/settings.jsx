@@ -85,7 +85,7 @@ export default function BotSettingsScreen() {
   // owner see or change it — this is the first UI surface for it. Kept as
   // its own explicit Save (not save-on-every-keystroke like the toggles
   // above) since a URL is easy to leave half-typed while editing.
-  const webhookDirty = webhookInput.trim() !== (bot.webhookUrl ?? '');
+  const webhookDirty = webhookInput.trim() !== (bot?.webhookUrl ?? '');
 
   async function handleSaveWebhook() {
     setSavingWebhook(true);

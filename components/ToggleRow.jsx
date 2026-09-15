@@ -19,6 +19,9 @@ export default function ToggleRow({ label, helper, value, onValueChange, disable
         value={value}
         onValueChange={(v) => { hapticSwitch(); onValueChange(v); }}
         disabled={disabled}
+        accessibilityRole="switch"
+        accessibilityLabel={label}
+        accessibilityState={{ checked: !!value, disabled: !!disabled }}
         trackColor={{ false: colors.border, true: colors.accent }}
         thumbColor="#FFFFFF"
         ios_backgroundColor={colors.border}

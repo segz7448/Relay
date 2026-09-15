@@ -7,9 +7,9 @@
 // is where the actual permission/registration plumbing lives.
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './utils/secureStore';
 
-const KEY = 'botmanager_notification_prefs';
+export const PREFS_KEY = 'botmanager_notification_prefs';
 
 export const SOUND_OPTIONS = ['Default', 'Chime', 'Ding', 'Pulse', 'Note', 'None'];
 
@@ -41,7 +41,7 @@ export function NotificationPrefsProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
-    SecureStore.getItemAsync(KEY)
+    SecureStore.getItemAsync(PREFS_KEY)
       .then((raw) => {
         if (cancelled) return;
         if (raw) {
@@ -65,7 +65,7 @@ export function NotificationPrefsProvider({ children }) {
     const next = { ...prefsRef.current, [key]: value };
     prefsRef.current = next;
     setPrefs(next);
-    SecureStore.setItemAsync(KEY, JSON.stringify(next)).catch(() => {});
+    SecureStore.setItemAsync(PREFS_KEY, JSON.stringify(next)).catch(() => {});
   }, []);
 
   const value = useMemo(() => ({ prefs, loaded, setPref }), [prefs, loaded, setPref]);

@@ -20,7 +20,10 @@ const OPTIONS = [
   { key: 'location', label: 'Location', icon: 'location', color: '#1E9C74' },
 ];
 
-export default function AttachmentSheet({ visible, onClose, onSelect }) {
+export default function AttachmentSheet({ visible, onClose, onSelect, keys }) {
+  // `keys` narrows the grid to the attachment kinds the host screen
+  // actually handles (e.g. the bot-user thread only offers what the bot
+  // file endpoint accepts) — never tiles that lead nowhere.
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -48,7 +51,7 @@ export default function AttachmentSheet({ visible, onClose, onSelect }) {
         >
           <View style={styles.card}>
             <View style={styles.grid}>
-              {OPTIONS.map((opt) => (
+              {(keys ? OPTIONS.filter((o) => keys.includes(o.key)) : OPTIONS).map((opt) => (
                 <Pressable
                   key={opt.key}
                   onPress={() => {

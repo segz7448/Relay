@@ -7,7 +7,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './utils/secureStore';
 
 // Dark — the original "control-room" palette.
 export const darkColors = {

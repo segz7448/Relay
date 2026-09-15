@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { colors, type, space, radius } from '../theme';
+import { type, space, radius, useTheme } from '../theme';
 
 function scoreOf(pw) {
   if (!pw) return 0;
@@ -13,7 +13,7 @@ function scoreOf(pw) {
   return Math.min(score, 4);
 }
 
-const LEVELS = [
+const levelsFor = (colors) => [
   { label: 'Too short', color: colors.textMuted },
   { label: 'Weak', color: colors.danger },
   { label: 'Fair', color: colors.warning },
@@ -22,6 +22,9 @@ const LEVELS = [
 ];
 
 export default function PasswordStrength({ password }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const score = scoreOf(password);
   const width = useRef(new Animated.Value(0)).current;
 
@@ -30,7 +33,7 @@ export default function PasswordStrength({ password }) {
   }, [score]);
 
   const barWidth = width.interpolate({ inputRange: [0, 4], outputRange: ['4%', '100%'] });
-  const level = LEVELS[password ? score : 0];
+  const level = levelsFor(colors)[password ? score : 0];
 
   if (!password) return null;
 
@@ -44,7 +47,7 @@ export default function PasswordStrength({ password }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: -space.sm, marginBottom: space.lg },
   track: { flex: 1, height: 4, borderRadius: radius.sm, backgroundColor: colors.surfaceRaised, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: radius.sm },

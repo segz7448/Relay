@@ -99,7 +99,7 @@ for `password_hash` (salt:hash, both hex) — don't store it in plaintext.
 npm run dev
 
 # In the app root, set:
-# EXPO_PUBLIC_API_URL=http://localhost:8787
+# CLOUDFLARE_WORKER_URL=http://localhost:8787
 
 # Stream Worker logs
 npx wrangler tail
@@ -112,9 +112,10 @@ npm run deploy
 # → https://botmanager-worker.<subdomain>.workers.dev
 ```
 
-Update `EXPO_PUBLIC_API_URL` in `.env` for local dev, and in the
-`EXPO_PUBLIC_API_URL` GitHub Actions secret (used by `build-apk.yml`) for
-CI builds, to the deployed URL, then rebuild.
+Set `CLOUDFLARE_WORKER_URL` for local app development. For Android builds,
+store the deployed Worker URL in the GitHub repository variable
+`CLOUDFLARE_WORKER_URL`; `build-apk.yml` embeds it in native app config.
+Cloudflare and FCM credentials remain GitHub Actions secrets.
 
 ---
 
