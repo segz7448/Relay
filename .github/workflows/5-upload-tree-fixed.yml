@@ -1,0 +1,29 @@
+name: Upload complete Relay release tree
+on:
+  push:
+    branches: [frontend-transfer]
+permissions:
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frontend-transfer
+          fetch-depth: 0
+      - name: Build and upload exact release tree to safe branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch=$(find . -maxdepth 1 -name '*relay-android-completion-kv-d1-68916138.patch' -print -quit)
+          test -n "$patch"
+          cp "$patch" /tmp/relay.patch
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "9b736da952278f84a9a3ecbb28dc9e836e787cd9"
+          git checkout --detach origin/main
+          git config user.name "Relay Builder"
+          git config user.email "builder@relay.local"
+          git am /tmp/relay.patch
+          test "$(git rev-parse 'HEAD^{tree}')" = "0ffc5cf314af0bac2cf42cda488b50a563100775"
+          git push origin HEAD:refs/heads/relay-release-upload
