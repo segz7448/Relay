@@ -74,6 +74,14 @@ jobs:
             gradle-${{ runner.os }}-
 
       - name: Build installable APK
+        # Release, not debug: a debug APK expects a Metro dev server
+        # reachable at runtime and has no JS bundle baked in, which is
+        # exactly what produces "Unable to load script" when sideloaded
+        # standalone. Release bundles the JS into the APK. This still
+        # needs no real signing key -- Expo's default template signs the
+        # release build type with the auto-generated debug keystore, so
+        # it installs fine for testing. Swap in a real release
+        # signingConfig before shipping to the Play Store.
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
