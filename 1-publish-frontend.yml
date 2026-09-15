@@ -1,0 +1,28 @@
+name: Publish tested frontend commit
+on:
+  push:
+    branches: [frontend-transfer]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frontend-transfer
+          fetch-depth: 0
+      - name: Apply exact tested commit to current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp relay-frontend-completion-892704b.patch /tmp/frontend.patch
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "9b736da952278f84a9a3ecbb28dc9e836e787cd9"
+          git checkout --detach origin/main
+          git am /tmp/frontend.patch
+          test "$(git rev-parse HEAD)" = "892704b507aff71fa9f2c6350406e0d694baf958"
+          git push origin HEAD:main
+      - name: Remove transfer branch
+        if: success()
+        run: git push origin --delete frontend-transfer
