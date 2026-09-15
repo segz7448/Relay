@@ -1,0 +1,23 @@
+name: Apply Relay phase16-17 wiring bundle
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frontend-transfer
+          fetch-depth: 0
+      - name: Apply bundle and push branch
+        run: |
+          set -euxo pipefail
+          git fetch origin relay-release-upload
+          B=$(ls *.bundle | head -n1)
+          git bundle verify "$B"
+          git fetch "./$B" HEAD:refs/remotes/bundle/head
+          git push origin refs/remotes/bundle/head:refs/heads/relay-phase16-17-wiring
+      - name: Verify pushed refs
+        run: git rev-parse refs/remotes/bundle/head 'refs/remotes/bundle/head^{tree}'
