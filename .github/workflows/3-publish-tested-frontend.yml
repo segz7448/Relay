@@ -16,7 +16,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp relay-frontend-completion-892704b.patch /tmp/frontend.patch
+          cp 2-relay-frontend-completion-892704b.patch /tmp/frontend.patch
           git fetch origin main
           test "$(git rev-parse origin/main)" = "9b736da952278f84a9a3ecbb28dc9e836e787cd9"
           git checkout --detach origin/main
