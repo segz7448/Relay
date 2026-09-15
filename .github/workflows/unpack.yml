@@ -3,20 +3,26 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - name: Verify transfer archive
+        run: ls -lh 1-relay-complete.tgz && tar -tzf 1-relay-complete.tgz >/dev/null
       - name: Replace transfer files with completed source
         run: |
           find . -mindepth 1 -maxdepth 1 ! -name .git ! -name 1-relay-complete.tgz -exec rm -rf {} +
           tar -xzf 1-relay-complete.tgz
           rm 1-relay-complete.tgz
+      - name: Commit completed source
+        run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
-          git commit -m "Complete Relay phases 1-30" || exit 0
-          git push origin HEAD:main
+          git commit -m "Complete Relay phases 1-30"
+      - name: Push completed source
+        run: git push origin HEAD:main
