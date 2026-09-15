@@ -22,7 +22,7 @@ jobs:
           git checkout --detach origin/main
           git config user.name "Relay Builder"
           git config user.email "builder@relay.local"
-          git am /tmp/frontend.patch
+          GIT_COMMITTER_DATE="Mon, 14 Sep 2026 22:43:14 -0700" git am /tmp/frontend.patch
           test "$(git rev-parse HEAD)" = "892704b507aff71fa9f2c6350406e0d694baf958"
           git push origin HEAD:main
       - name: Remove transfer branch
