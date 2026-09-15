@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Apply Relay phase16-17 wiring bundle and push branch",
+      "type": "shell",
+      "command": "set -euxo pipefail; cd /workspaces/Relay; git fetch origin relay-release-upload frontend-transfer; B=$(ls *.bundle | head -n1); git bundle verify \"$B\"; git fetch \"./$B\" HEAD:refs/heads/relay-phase16-17-wiring; git push origin refs/heads/relay-phase16-17-wiring:refs/heads/relay-phase16-17-wiring; git rev-parse relay-phase16-17-wiring 'relay-phase16-17-wiring^{tree}'",
+      "problemMatcher": []
+    }
+  ]
+}
