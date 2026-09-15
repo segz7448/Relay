@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Upload complete Relay release to safe branch",
+      "type": "shell",
+      "command": "git fetch origin main frontend-transfer && git checkout -B relay-release-upload origin/main && git show origin/frontend-transfer:1-relay-android-completion-kv-d1-68916138.patch > /tmp/relay.patch && git am /tmp/relay.patch && test $(git rev-parse HEAD^{tree}) = 0ffc5cf314af0bac2cf42cda488b50a563100775 && git push -u origin relay-release-upload",
+      "problemMatcher": []
+    }
+  ]
+}
