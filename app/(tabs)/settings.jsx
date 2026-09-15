@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Linking, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Linking, StyleSheet } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { type, space, radius, useTheme } from '../../theme';
 import { SecondaryButton } from '../../components/Button';
 import SettingsSection from '../../components/SettingsSection';
@@ -25,6 +26,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const toast = useToast();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { profile } = useProfile();
   const { prefs } = useNotificationPrefs();
@@ -39,7 +41,6 @@ export default function SettingsScreen() {
   } = useAccounts();
   const burst = useStatusBurst();
   const confirm = useConfirm();
-  const toast = useToast();
 
   const [account, setAccount] = useState(null);
   const [newKey, setNewKey] = useState(null); // shown once after rotation
@@ -153,7 +154,10 @@ export default function SettingsScreen() {
       if (!supported) throw new Error('no mail client');
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Contact Support', `Reach us at ${SUPPORT_EMAIL}`);
+      // No usable mail client — copy the address instead, which works
+      // on every platform (Alert.alert is a silent no-op on web).
+      await Clipboard.setStringAsync(SUPPORT_EMAIL);
+      toast.info(`Support email copied: ${SUPPORT_EMAIL}`);
     }
   }
 

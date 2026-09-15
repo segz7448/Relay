@@ -1,12 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { Pressable, View, Text, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, type, space } from '../theme';
+import { type, space, useTheme } from '../theme';
 
 // Used for "Remember me" and the terms agreement. `children` can be plain
 // text or a mix of <Text> nodes (so a screen can make part of the label,
 // e.g. "Terms of Service", independently tappable).
 export default function Checkbox({ checked, onToggle, children }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const scale = useRef(new Animated.Value(checked ? 1 : 0)).current;
 
   useEffect(() => {
@@ -27,7 +30,7 @@ export default function Checkbox({ checked, onToggle, children }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginBottom: space.lg },
   box: {
     width: 20,

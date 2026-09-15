@@ -19,8 +19,8 @@ Call controls are intentionally absent. The repository has no realtime voice/vid
 
 ```sh
 npm ci
-EXPO_PUBLIC_API_URL=http://localhost:8787 npm run check
-EXPO_PUBLIC_API_URL=http://localhost:8787 npm run export:web
+CLOUDFLARE_WORKER_URL=http://localhost:8787 npm run check
+CLOUDFLARE_WORKER_URL=http://localhost:8787 npm run export:web
 
 cd worker
 npm ci
@@ -34,7 +34,7 @@ npx wrangler deploy --dry-run
 
 Public configuration:
 
-- GitHub repository variable `API_URL`, exposed to the app as `EXPO_PUBLIC_API_URL`
+- GitHub repository variable `CLOUDFLARE_WORKER_URL`, embedded in native app config during the APK build
 - D1 database ID and KV namespace ID in `worker/wrangler.toml`
 - R2 bucket name and allowed CORS origin in `worker/wrangler.toml`
 

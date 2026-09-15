@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "botmanager-db"
-database_id = "YOUR_D1_DATABASE_ID"   # wrangler d1 create botmanager-db — not a secret, just an id; fill in once
+database_id = "0563146a-7cd8-4223-97e2-a4086202be01"
 
 # ─── R2 Storage (file uploads) ──────────────────────────────────────────────────
 [[r2_buckets]]
@@ -17,7 +17,7 @@ bucket_name = "botmanager-files"       # wrangler r2 bucket create botmanager-fi
 # ─── KV (rate-limit counters, short-lived tokens) ────────────────────────────
 [[kv_namespaces]]
 binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"            # wrangler kv:namespace create BOTMANAGER_KV — not a secret, just an id; fill in once
+id = "b1d847ab7a214b979cfa2646f780c644"
 
 # ─── Secrets ──────────────────────────────────────────────────────────────────
 # Pushed automatically by .github/workflows/deploy-worker.yml from GitHub

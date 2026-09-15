@@ -64,6 +64,9 @@ function RootLayoutNav() {
         <Stack.Screen name="bot/[id]/commands" options={{ title: 'Commands' }} />
         <Stack.Screen name="bot/[id]/command-edit" options={{ title: 'Command', presentation: 'modal' }} />
         <Stack.Screen name="bot/[id]/users" options={{ title: 'Users' }} />
+        <Stack.Screen name="bot/[id]/conversations" options={{ title: 'Conversations' }} />
+        <Stack.Screen name="bot/[id]/webhook" options={{ title: 'Webhook' }} />
+        <Stack.Screen name="bot/[id]/webhook-deliveries" options={{ title: 'Webhook Deliveries' }} />
         <Stack.Screen name="bot/[id]/user/[userId]/index" options={{ headerShown: false }} />
         <Stack.Screen name="bot/[id]/user/[userId]/history" options={{ headerShown: false }} />
         <Stack.Screen name="bot/[id]/files" options={{ title: 'Files' }} />
@@ -71,6 +74,7 @@ function RootLayoutNav() {
         <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile', presentation: 'modal' }} />
         <Stack.Screen name="settings-appearance" options={{ title: 'Appearance' }} />
         <Stack.Screen name="settings-notifications" options={{ title: 'Notifications and Sounds' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="settings-privacy" options={{ title: 'Privacy and Security' }} />
         <Stack.Screen name="settings-privacy-rules" options={{ title: 'Privacy' }} />
         <Stack.Screen name="settings-blocked-users" options={{ title: 'Blocked Users' }} />

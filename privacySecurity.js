@@ -9,7 +9,7 @@
 // so this file (read by the main hub screen) never has them in memory.
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './utils/secureStore';
 
 const KEY = 'botmanager_privacy_security';
 

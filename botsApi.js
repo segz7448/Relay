@@ -227,6 +227,10 @@ export async function fetchBotActivity(botId) {
 
 // Phases 16-20 production surfaces.
 export const fetchBotConversations = (botId) => api.listBotConversations(botId);
+// Reading a thread through this route (not /users/:userId/messages)
+// also clears the conversation's unread counter server-side — the
+// conversation inbox depends on that.
+export const fetchBotConversationMessages = (botId, userId) => api.getBotConversationMessages(botId, userId);
 export const fetchBotFiles = (botId) => api.listBotFiles(botId);
 export async function uploadBotFile(botId, asset, botUserId) {
   const form = new FormData();
@@ -242,3 +246,4 @@ export const setBotWebhookEnabled = (botId, enabled) => enabled ? api.enableBotW
 export const rotateBotWebhookSecret = (botId) => api.rotateBotWebhookSecret(botId);
 export const testBotWebhook = (botId) => api.testBotWebhook(botId);
 export const fetchBotWebhookDeliveries = (botId) => api.listBotWebhookDeliveries(botId);
+export const removeBotWebhook = (botId) => api.deleteBotWebhook(botId);

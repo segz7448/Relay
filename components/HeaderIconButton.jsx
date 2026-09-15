@@ -7,7 +7,7 @@ import { useTheme } from '../theme';
 // Small round glass button for the header — the Telegram-style compose/
 // edit affordance in the top right. Deliberately small (32px) so it reads
 // as a secondary action next to the screen title, not a second CTA.
-export default function HeaderIconButton({ icon = 'create-outline', onPress, size = 32 }) {
+export default function HeaderIconButton({ icon = 'create-outline', onPress, size = 32, label = 'Compose' }) {
   const { scheme } = useTheme();
   const styles = useMemo(() => getStyles(scheme), [scheme]);
   const scale = useRef(new Animated.Value(1)).current;
@@ -16,7 +16,7 @@ export default function HeaderIconButton({ icon = 'create-outline', onPress, siz
 
   return (
     <Animated.View style={{ transform: [{ scale }], marginRight: 14 }}>
-      <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} hitSlop={10}>
+      <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} hitSlop={10} accessibilityRole="button" accessibilityLabel={label}>
         <BlurView
           intensity={40}
           tint="light"

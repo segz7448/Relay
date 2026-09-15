@@ -83,7 +83,7 @@ export default function ImageMessage({
         ) : null}
         {boxWidth ? (
           <Image
-            source={{ uri: attachment.uri }}
+            source={{ uri: attachment.uri, headers: attachment.headers }}
             style={[StyleSheet.absoluteFillObject, cornerStyle]}
             resizeMode="cover"
             onLoadEnd={() => setLoaded(true)}

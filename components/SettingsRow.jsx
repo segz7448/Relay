@@ -77,6 +77,9 @@ export default function SettingsRow({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       disabled={disabled}
+      accessibilityRole={toggle ? 'switch' : onPress ? 'button' : 'text'}
+      accessibilityLabel={typeof label === 'string' ? label : undefined}
+      accessibilityState={{ disabled: !!disabled, ...(toggle ? { checked: !!toggle.value } : {}) }}
     >
       {({ pressed }) => (
         <Animated.View style={[{ transform: [{ scale }] }, pressed && !disabled ? { backgroundColor: colors.surfaceRaised } : null]}>

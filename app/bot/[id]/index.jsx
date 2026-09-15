@@ -12,7 +12,7 @@ import { useToast } from '../../../components/Toast';
 import { useConfirm } from '../../../components/ConfirmDialog';
 import { useStatusBurst } from '../../../components/StatusBurst';
 import { hapticTap } from '../../../utils/haptics';
-import { fetchBot, setBotEnabled, deleteBot } from '../../../botsApi';
+import { fetchBot, fetchBotConversations, setBotEnabled, deleteBot } from '../../../botsApi';
 
 function hashColor(seed) {
   let h = 0;
@@ -46,15 +46,23 @@ export default function BotDetailScreen() {
   const burst = useStatusBurst();
 
   const [bot, setBot] = useState(null);
+  const [inbox, setInbox] = useState({ count: 0, unread: 0 });
   const [phase, setPhase] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const b = await fetchBot(id);
+      const [b, convos] = await Promise.all([
+        fetchBot(id),
+        fetchBotConversations(id).catch(() => []),
+      ]);
       if (!b) throw new Error('bot_not_found');
       setBot(b);
+      setInbox({
+        count: convos.length,
+        unread: convos.reduce((sum, c) => sum + (Number(c.unreadCount) || 0), 0),
+      });
       setPhase('ready');
     } catch (e) {
       setPhase('error');
@@ -188,6 +196,14 @@ export default function BotDetailScreen() {
           <Row icon="terminal-outline" label="Commands" value={`${bot.commands.length}`} onPress={() => router.push(`/bot/${id}/commands`)} styles={styles} colors={colors} />
           <View style={styles.hairline} />
           <Row icon="chatbubbles-outline" label="Messages" onPress={() => router.push(`/conversation/${id}`)} styles={styles} colors={colors} />
+          <View style={styles.hairline} />
+          <Row
+            icon="chatbox-ellipses-outline"
+            label="Conversations"
+            value={inbox.unread > 0 ? `${inbox.unread} unread` : `${inbox.count}`}
+            onPress={() => router.push(`/bot/${id}/conversations`)}
+            styles={styles} colors={colors}
+          />
           <View style={styles.hairline} />
           <Row icon="people-outline" label="Users" value={`${bot.users.length}`} onPress={() => router.push(`/bot/${id}/users`)} styles={styles} colors={colors} />
           <View style={styles.hairline} />

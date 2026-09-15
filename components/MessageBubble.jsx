@@ -105,7 +105,7 @@ function AttachmentContent({
     return (
       <View style={styles.mediaWrap}>
         {attachment.uri ? (
-          <Image source={{ uri: attachment.uri }} style={styles.mediaImage} resizeMode="cover" />
+          <Image source={{ uri: attachment.uri, headers: attachment.headers }} style={styles.mediaImage} resizeMode="cover" />
         ) : (
           <View style={[styles.mediaImage, styles.mediaFallback]}>
             <Ionicons name={attachment.kind === 'video' ? 'videocam' : 'image'} size={28} color={colors.textMuted} />

@@ -39,6 +39,38 @@ describe('Phase 16 bot webhooks', () => {
     expect((await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook`, auth(token,'DELETE'))).status).toBe(204);
   });
 
+  it('sends a real test delivery and lists delivery history newest-first', async () => {
+    const token = await ownerToken();
+    const bot = await (await SELF.fetch('https://worker.test/bots', auth(token,'POST',{name:'Hook Bot',username:'hook_bot_3'}))).json<any>();
+    expect((await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook`, auth(token,'POST',{url:'https://hooks.example.com/a'}))).status).toBe(201);
+
+    // hooks.example.com resolves nowhere real, so the awaited single-attempt
+    // test delivery deterministically records a failure — which is exactly
+    // the honest feedback the owner should see.
+    const tested = await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook/test`, auth(token,'POST'));
+    expect(tested.status).toBe(200);
+    const { delivery } = await tested.json<any>();
+    expect(delivery.eventId).toMatch(/^[a-f0-9]{24}$/);
+    expect(delivery.ok).toBe(false);
+
+    const list = await (await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook/deliveries`, auth(token))).json<any[]>();
+    expect(list).toHaveLength(1);
+    expect(list[0].eventId).toBe(delivery.eventId);
+    expect(list[0].eventType).toBe('bot.webhook.test');
+    expect(list[0].status).toBe('failed');
+    expect(list[0].attempt).toBe(1);
+
+    // A second test lands ahead of the first (newest-first ordering) and
+    // the webhook summary reflects the latest attempt.
+    await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook/test`, auth(token,'POST'));
+    const list2 = await (await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook/deliveries`, auth(token))).json<any[]>();
+    expect(list2).toHaveLength(2);
+    expect(list2[0].createdAt).toBeGreaterThanOrEqual(list2[1].createdAt);
+    const wh = await (await SELF.fetch(`https://worker.test/bots/${bot.id}/webhook`, auth(token))).json<any>();
+    expect(wh.lastDeliveryStatus).toBe('failed');
+    expect(wh.lastDeliveryAt).toBeTypeOf('number');
+  });
+
   it('enforces owner isolation and rejects SSRF destinations', async () => {
     const token = await ownerToken();
     const bot = await (await SELF.fetch('https://worker.test/bots', auth(token,'POST',{name:'Webhook Bot',username:'webhook_bot_2'}))).json<any>();

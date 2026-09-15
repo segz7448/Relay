@@ -24,6 +24,8 @@ export default function ServerRow({ server, onPress, onLongPress }) {
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${server.name}${server.unreadCount ? `, ${server.unreadCount} unread` : ''}`}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfaceRaised }]}
     >
       {server.icon ? (

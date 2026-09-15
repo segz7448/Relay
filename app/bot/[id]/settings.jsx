@@ -11,8 +11,7 @@ import { useToast } from '../../../components/Toast';
 import { useConfirm } from '../../../components/ConfirmDialog';
 import { useStatusBurst } from '../../../components/StatusBurst';
 import { hapticSwitch } from '../../../utils/haptics';
-import Field from '../../../components/Field';
-import { fetchBot, updateBot, setBotEnabled, rotateBotToken, revokeBotToken, deleteBot } from '../../../botsApi';
+import { fetchBot, fetchBotWebhook, updateBot, setBotEnabled, rotateBotToken, revokeBotToken, deleteBot } from '../../../botsApi';
 
 function ToggleRow({ label, helper, value, onValueChange, styles, colors, disabled }) {
   return (
@@ -46,16 +45,23 @@ export default function BotSettingsScreen() {
   const [phase, setPhase] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [rotating, setRotating] = useState(false);
   const [revoking, setRevoking] = useState(false);
-  const [webhookInput, setWebhookInput] = useState('');
-  const [webhookError, setWebhookError] = useState(null);
-  const [savingWebhook, setSavingWebhook] = useState(false);
+  // PHASE 16 — the configured webhook's state, fetched through the
+  // dedicated webhook route so this row can deep-link to the real
+  // management screen. null = not configured.
+  const [webhook, setWebhook] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const b = await fetchBot(id);
       if (!b) throw new Error('bot_not_found');
+      let wh = null;
+      try {
+        wh = await fetchBotWebhook(id);
+      } catch (e) {
+        if (e.message !== 'not_configured') throw e;
+      }
       setBot(b);
-      setWebhookInput(b.webhookUrl ?? '');
+      setWebhook(wh);
       setPhase('ready');
     } catch (e) {
       setPhase('error');
@@ -77,29 +83,6 @@ export default function BotSettingsScreen() {
     } catch (e) {
       setBot(previous);
       toast.error("Couldn't save that change");
-    }
-  }
-
-  // PHASE 11 — "Webhook settings" (bot settings list). `webhookUrl` was
-  // already a real, patchable column, but no screen anywhere let the
-  // owner see or change it — this is the first UI surface for it. Kept as
-  // its own explicit Save (not save-on-every-keystroke like the toggles
-  // above) since a URL is easy to leave half-typed while editing.
-  const webhookDirty = webhookInput.trim() !== (bot.webhookUrl ?? '');
-
-  async function handleSaveWebhook() {
-    setSavingWebhook(true);
-    setWebhookError(null);
-    const value = webhookInput.trim();
-    try {
-      const updated = await updateBot(id, { webhookUrl: value || null });
-      setBot((b) => ({ ...b, ...updated }));
-      setWebhookInput(updated.webhookUrl ?? '');
-      toast.success(value ? 'Webhook saved' : 'Webhook cleared');
-    } catch (e) {
-      setWebhookError(e.message || 'Enter a valid http(s) URL, or leave it blank.');
-    } finally {
-      setSavingWebhook(false);
     }
   }
 
@@ -228,26 +211,23 @@ export default function BotSettingsScreen() {
 
       <Text style={styles.sectionLabel}>Webhook</Text>
       <View style={styles.card}>
-        <Field
-          value={webhookInput}
-          onChangeText={(v) => { setWebhookInput(v); setWebhookError(null); }}
-          placeholder="https://your-server.com/hook"
-          helper={webhookError ?? "Where this bot's outbound events are delivered. Leave blank to disable."}
-          error={webhookError}
-          mono
-          autoCapitalize="none"
-          keyboardType="url"
-          textContentType="URL"
-        />
+        <Pressable
+          style={({ pressed }) => [styles.webhookRow, pressed && { backgroundColor: colors.surfaceRaised }]}
+          onPress={() => router.push(`/bot/${id}/webhook`)}
+          accessibilityRole="button"
+          accessibilityLabel="Manage webhook"
+        >
+          <Ionicons name="git-branch-outline" size={17} color={colors.textSecondary} />
+          <Text style={styles.webhookRowLabel}>Webhook</Text>
+          <Text style={styles.webhookRowValue}>
+            {webhook ? (webhook.enabled ? 'Enabled' : 'Paused') : 'Not set up'}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
       </View>
-      <View style={{ height: space.sm }} />
-      <SecondaryButton
-        label={savingWebhook ? 'Saving…' : 'Save webhook'}
-        icon="link-outline"
-        disabled={savingWebhook || !webhookDirty}
-        loading={savingWebhook}
-        onPress={handleSaveWebhook}
-      />
+      <Text style={styles.helper}>
+        Configure the endpoint, signing secret, test events, and delivery history on the webhook screen.
+      </Text>
 
       <Text style={styles.sectionLabel}>Credentials</Text>
       <View style={styles.card}>
@@ -306,6 +286,9 @@ function getStyles(colors) {
     rowLabel: { ...type.body, color: colors.textSecondary },
     tokenValue: { ...type.dataSm, color: colors.textPrimary, flexShrink: 1 },
     helper: { ...type.small, color: colors.textMuted, marginTop: space.xs, marginBottom: space.sm },
+    webhookRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md },
+    webhookRowLabel: { ...type.body, color: colors.textPrimary, flex: 1 },
+    webhookRowValue: { ...type.small, color: colors.textMuted },
     deleteRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm },
     deleteLabel: { ...type.body, color: colors.danger, fontWeight: '600' },
   });

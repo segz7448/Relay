@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type, space, radius, avatarPalette, useTheme } from '../theme';
@@ -57,12 +57,15 @@ function timeLabel(ts) {
 
 export default function SearchScreen() {
   const router = useRouter();
+  // Deep-linkable starting tab (e.g. /search?tab=bots from the compose
+  // menu's "New Bot Conversation"). Unknown values fall back to messages.
+  const { tab: tabParam } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
 
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState('messages');
+  const [tab, setTab] = useState(() => (TABS.some((t) => t.key === tabParam) ? tabParam : 'messages'));
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [messageResults, setMessageResults] = useState([]);

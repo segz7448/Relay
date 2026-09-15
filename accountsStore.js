@@ -17,7 +17,7 @@
 // first account instead of being dropped.
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './utils/secureStore';
 import { api, setApiKey } from './api';
 
 const ACCOUNTS_KEY = 'botmanager_accounts';

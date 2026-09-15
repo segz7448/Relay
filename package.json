@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "prebuild": "expo prebuild",
     "check": "npx expo export --platform web --output-dir /tmp/relay-web-check",
-    "export:web": "expo export --platform web --output-dir dist"
+    "export:web": "expo export --platform web --output-dir dist",
+    "parity": "node scripts/check-api-parity.mjs",
+    "test:ui": "node --test utils/__tests__/*.test.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
