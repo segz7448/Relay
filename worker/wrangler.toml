@@ -1,0 +1,33 @@
+name = "botmanager-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-22"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── D1 Database ────────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "botmanager-db"
+database_id = "YOUR_D1_DATABASE_ID"   # wrangler d1 create botmanager-db — not a secret, just an id; fill in once
+
+# ─── R2 Storage (file uploads) ──────────────────────────────────────────────────
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "botmanager-files"       # wrangler r2 bucket create botmanager-files
+
+# ─── KV (rate-limit counters, short-lived tokens) ────────────────────────────
+[[kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID"            # wrangler kv:namespace create BOTMANAGER_KV — not a secret, just an id; fill in once
+
+# ─── Secrets ──────────────────────────────────────────────────────────────────
+# Pushed automatically by .github/workflows/deploy-worker.yml from GitHub
+# Secrets on every deploy. To set them by hand instead: wrangler secret put <NAME>
+# JWT_SECRET       — random 64-char string for signing session tokens
+# FCM_SERVER_KEY   — Firebase Cloud Messaging legacy server key
+
+[vars]
+CORS_ORIGIN = "*"
+
+[dev]
+port = 8787
+local_protocol = "http"

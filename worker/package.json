@@ -1,0 +1,25 @@
+{
+  "name": "botmanager-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute botmanager-db --file=src/db/schema.sql",
+    "db:migrate:remote": "wrangler d1 migrations apply botmanager-db --remote",
+    "db:studio": "wrangler d1 studio botmanager-db",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply botmanager-db --local"
+  },
+  "dependencies": {
+    "hono": "^4.6.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.11",
+    "wrangler": "^3.78.12"
+  }
+}

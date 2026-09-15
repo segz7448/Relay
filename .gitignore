@@ -1,0 +1,25 @@
+node_modules/
+worker/node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+.dev.vars
+worker/.dev.vars
+.wrangler/
+.DS_Store
+npm-debug.log*
+
+# Transfer artifacts are never part of the source tree
+*.tgz
+*.tar.gz
