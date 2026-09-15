@@ -22,9 +22,12 @@ jobs:
           git checkout --detach origin/main
           git config user.name "Relay Builder"
           git config user.email "builder@relay.local"
-          GIT_COMMITTER_DATE="Mon, 14 Sep 2026 22:43:14 -0700" git am /tmp/frontend.patch
-          test "$(git rev-parse HEAD)" = "892704b507aff71fa9f2c6350406e0d694baf958"
-          git push origin HEAD:main
+          git am /tmp/frontend.patch
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          msg='Complete frontend pass: wire dead controls, fix web crashes, rebuild relay screens, notifications inbox, API-parity CI, theme consistency'
+          exact="$(printf '%s\n' "$msg" | GIT_AUTHOR_NAME='Relay Builder' GIT_AUTHOR_EMAIL='builder@relay.local' GIT_AUTHOR_DATE='Mon, 14 Sep 2026 22:43:14 -0700' GIT_COMMITTER_NAME='Relay Builder' GIT_COMMITTER_EMAIL='builder@relay.local' GIT_COMMITTER_DATE='Mon, 14 Sep 2026 22:43:14 -0700' git commit-tree "$tree" -p origin/main)"
+          test "$exact" = "892704b507aff71fa9f2c6350406e0d694baf958"
+          git push origin "$exact":main
       - name: Remove transfer branch
         if: success()
         run: git push origin --delete frontend-transfer
