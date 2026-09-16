@@ -24,7 +24,7 @@ auth.post('/login', async (c) => {
       ? 'SELECT * FROM users WHERE email = ?'
       : 'SELECT * FROM users WHERE username = ?'
   ).bind(identifier.toLowerCase()).first<{
-    id: string; email: string; username: string; name: string;
+    id: string; email: string; username: string; name: string; bio: string | null; photo_url: string | null;
     password_hash: string;
   }>();
 
@@ -34,7 +34,7 @@ auth.post('/login', async (c) => {
   if (!ok) return c.json({ error: 'invalid_credentials', message: 'Incorrect email/username or password.' }, 401);
 
   const sessionToken = await issueSession(c, db, user.id, user, deviceName, platform);
-  return c.json({ sessionToken, name: user.name, username: user.username, email: user.email });
+  return c.json({ sessionToken, name: user.name, username: user.username, email: user.email, bio: user.bio ?? "", photoUrl: user.photo_url ?? null });
 });
 
 // ── POST /auth/logout ────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ auth.post('/rotate', requireAuth, async (c) => {
 
   await db.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run();
   const sessionToken = await issueSession(c, db, userId, user, oldSession?.device_name, oldSession?.platform);
-  return c.json({ sessionToken });
+  return c.json({ sessionToken, apiKey: sessionToken });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

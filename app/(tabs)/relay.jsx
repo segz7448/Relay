@@ -35,8 +35,8 @@ export default function RelayScreen() {
       // PHASE 4: /relay/servers now returns the shared paginated shape
       // ({ items, nextCursor, hasMore }) instead of a bare array, so every
       // relay list endpoint has one consistent envelope. This screen only
-      // renders the first page for now — cursor-based "load more" for this
-      // list is Phase 23's job (Server Relay UI: Wire to Real Backend).
+      // Keep the first response and its cursor together so onEndReached can
+      // append every later page without duplicates.
       const data = await fetchRelayServers();
       setServers(data?.items ?? []);
       setCursor(data?.nextCursor ?? null);

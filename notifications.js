@@ -159,7 +159,9 @@ export function NotificationsProvider({ children }) {
         // was about, using the ids the Worker puts in the payload
         // (worker/src/lib/fcm.ts).
         const { data } = response.notification.request.content;
-        if (data?.conversationId) {
+        if (data?.callId) {
+          router.push(`/call/${data.callId}`);
+        } else if (data?.conversationId) {
           router.push(`/conversation/${data.conversationId}`);
         } else if (data?.botId) {
           router.push(`/bot/${data.botId}`);

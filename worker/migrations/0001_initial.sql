@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   name        TEXT NOT NULL DEFAULT '',
   bio         TEXT NOT NULL DEFAULT '',
   photo_url   TEXT,
+  photo_key   TEXT,
   password_hash TEXT NOT NULL,
   two_step_enabled INTEGER NOT NULL DEFAULT 0,
   two_step_hash TEXT,

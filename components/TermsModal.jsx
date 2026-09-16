@@ -3,8 +3,6 @@ import { Modal, View, Text, ScrollView, StyleSheet } from 'react-native';
 import { IconGhostButton } from './Button';
 import { type, space, radius, useTheme } from '../theme';
 
-// Placeholder legal copy — swap for the real Terms/Privacy content
-// whenever that's written; the modal shell and animation stay the same.
 export default function TermsModal({ visible, onClose, title, body }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);

@@ -8,7 +8,7 @@
 async function withHaptics(fn) {
   try {
     const Haptics = await import('expo-haptics');
-    fn(Haptics);
+    await fn(Haptics);
   } catch {
     // Not installed on this platform/build — reactions still work, just silently.
   }

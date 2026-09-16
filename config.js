@@ -8,4 +8,4 @@ if (!configuredApiUrl && !__DEV__) {
   throw new Error('Cloudflare Worker URL is missing from the Android build');
 }
 
-export const API_URL = (configuredApiUrl || 'http://localhost:8787').replace(/\/$/, '');
+export const API_URL = (configuredApiUrl || 'https://botmanager-worker.ayiijumo.workers.dev').replace(/\/$/, '');

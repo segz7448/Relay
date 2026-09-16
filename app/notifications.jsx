@@ -41,7 +41,8 @@ export default function NotificationsInboxScreen() {
   function open(item) {
     markRead(item.id);
     const data = item.data ?? {};
-    if (data.conversationId) router.push(`/conversation/${data.conversationId}`);
+    if (data.callId) router.push(`/call/${data.callId}`);
+    else if (data.conversationId) router.push(`/conversation/${data.conversationId}`);
     else if (data.botId) router.push(`/bot/${data.botId}`);
   }
 

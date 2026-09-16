@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Share, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Share, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { type, space, radius, useTheme } from '../../theme';
-import { hashColor, initials } from '../../components/Avatar';
+import Avatar from '../../components/Avatar';
 import { PrimaryButton } from '../../components/Button';
 import ActionSheet from '../../components/ActionSheet';
 import { SkeletonCircle, SkeletonBox } from '../../components/Skeleton';
@@ -210,13 +210,7 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: space.xl * 2 }}>
         <View style={styles.identity}>
-          {person?.photo ? (
-            <Image source={{ uri: person.photo }} style={styles.avatarImg} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: hashColor(person?.name) }]}>
-              <Text style={styles.avatarText}>{initials(person?.name)}</Text>
-            </View>
-          )}
+          <Avatar uri={person?.photo || person?.photoUrl} name={person?.name} size={96} />
           <Text style={styles.name}>{person?.name}</Text>
           {person?.username ? <Text style={styles.handle}>@{person.username}</Text> : null}
           {!isSelf ? (

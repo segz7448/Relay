@@ -1,0 +1,8 @@
+ALTER TABLE users ADD COLUMN photo_key TEXT;
+CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, caller_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, callee_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, state TEXT NOT NULL, offer_sdp TEXT, answer_sdp TEXT, started_at INTEGER NOT NULL, answered_at INTEGER, ended_at INTEGER, ended_by TEXT, end_reason TEXT, updated_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_calls_participants ON calls(caller_id,callee_id,updated_at DESC);
+CREATE TABLE IF NOT EXISTS call_ice_candidates (id TEXT PRIMARY KEY, call_id TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE, sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, candidate TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_call_ice ON call_ice_candidates(call_id,created_at);
+CREATE TABLE IF NOT EXISTS idempotency_records(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,idempotency_key TEXT NOT NULL,operation TEXT NOT NULL,resource_id TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(user_id,idempotency_key,operation));
+CREATE TABLE IF NOT EXISTS server_bots(server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,bot_id TEXT NOT NULL REFERENCES bots(id) ON DELETE CASCADE,added_by TEXT NOT NULL REFERENCES users(id),created_at INTEGER NOT NULL,PRIMARY KEY(server_id,bot_id));
+CREATE TABLE IF NOT EXISTS agent_access_audit(id TEXT PRIMARY KEY,api_key_id TEXT NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,user_id TEXT NOT NULL REFERENCES users(id),method TEXT NOT NULL,path TEXT NOT NULL,outcome TEXT NOT NULL,created_at INTEGER NOT NULL);

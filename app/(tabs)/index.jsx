@@ -1,17 +1,31 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, RefreshControl, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { type, space, radius, useTheme } from '../../theme';
-import ConversationRow from '../../components/ConversationRow';
-import ActionSheet from '../../components/ActionSheet';
-import HeaderIconButton from '../../components/HeaderIconButton';
-import { SkeletonList, SkeletonListRow } from '../../components/Skeleton';
-import { EmptyState, ErrorState } from '../../components/StateViews';
-import { useToast } from '../../components/Toast';
-import { useConfirm } from '../../components/ConfirmDialog';
-import { fetchConversations } from '../../messagesApi';
+import { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  RefreshControl,
+  Pressable,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { type, space, radius, useTheme } from "../../theme";
+import ConversationRow from "../../components/ConversationRow";
+import ActionSheet from "../../components/ActionSheet";
+import HeaderIconButton from "../../components/HeaderIconButton";
+import { SkeletonList, SkeletonListRow } from "../../components/Skeleton";
+import { EmptyState, ErrorState } from "../../components/StateViews";
+import { useToast } from "../../components/Toast";
+import { useConfirm } from "../../components/ConfirmDialog";
+import {
+  fetchConversations,
+  pinConversation,
+  muteConversation,
+  patchConversation,
+  deleteConversation,
+} from "../../messagesApi";
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -21,9 +35,9 @@ export default function MessagesScreen() {
   const toast = useToast();
   const confirm = useConfirm();
   const [conversations, setConversations] = useState([]);
-  const [phase, setPhase] = useState('loading'); // 'loading' | 'ready' | 'error'
+  const [phase, setPhase] = useState("loading"); // 'loading' | 'ready' | 'error'
   const [refreshing, setRefreshing] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [sheetFor, setSheetFor] = useState(null); // convo shown in the long-press sheet
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
@@ -32,9 +46,9 @@ export default function MessagesScreen() {
     try {
       const data = await fetchConversations();
       setConversations(data);
-      setPhase('ready');
+      setPhase("ready");
     } catch (e) {
-      setPhase('error');
+      setPhase("error");
     }
   }, []);
 
@@ -49,38 +63,70 @@ export default function MessagesScreen() {
   }
 
   async function retryLoad() {
-    setPhase('loading');
+    setPhase("loading");
     await load();
   }
 
   function patch(id, changes) {
-    setConversations((list) => list.map((c) => (c.id === id ? { ...c, ...changes } : c)));
+    setConversations((list) =>
+      list.map((c) => (c.id === id ? { ...c, ...changes } : c)),
+    );
   }
 
-  function togglePin(convo) {
-    patch(convo.id, { pinned: !convo.pinned });
-    toast.show(convo.pinned ? 'Unpinned' : 'Pinned');
+  async function togglePin(convo) {
+    const value = !convo.pinned;
+    try {
+      await pinConversation(convo.id, value);
+      patch(convo.id, { pinned: value });
+      toast.show(value ? "Pinned" : "Unpinned");
+    } catch {
+      toast.error("Couldn't update pin");
+    }
   }
-  function toggleRead(convo) {
-    patch(convo.id, { unread: convo.unread > 0 ? 0 : 1 });
+  async function toggleRead(convo) {
+    const unreadCount = convo.unread > 0 ? 0 : 1;
+    try {
+      await patchConversation(convo.id, { unreadCount });
+      patch(convo.id, { unread: unreadCount });
+    } catch {
+      toast.error("Couldn't update read status");
+    }
   }
-  function markUnread(convo) {
-    patch(convo.id, { unread: convo.unread > 0 ? convo.unread : 1 });
+  async function markUnread(convo) {
+    const unreadCount = convo.unread > 0 ? convo.unread : 1;
+    try {
+      await patchConversation(convo.id, { unreadCount });
+      patch(convo.id, { unread: unreadCount });
+    } catch {
+      toast.error("Couldn't mark unread");
+    }
   }
-  function toggleMute(convo) {
-    patch(convo.id, { muted: !convo.muted });
-    toast.show(convo.muted ? 'Unmuted' : 'Muted');
+  async function toggleMute(convo) {
+    const value = !convo.muted;
+    try {
+      await muteConversation(convo.id, value);
+      patch(convo.id, { muted: value });
+      toast.show(value ? "Muted" : "Unmuted");
+    } catch {
+      toast.error("Couldn't update mute");
+    }
   }
   async function remove(convo) {
     const ok = await confirm({
       title: `Delete "${convo.name}"?`,
-      message: 'This removes the conversation from your list. This can\'t be undone.',
-      confirmLabel: 'Delete',
+      message:
+        "This removes the conversation from your list. This can't be undone.",
+      confirmLabel: "Delete",
       destructive: true,
     });
     if (!ok) return;
-    setConversations((list) => list.filter((c) => c.id !== convo.id));
-    toast.success('Conversation deleted');
+    try {
+      await deleteConversation(convo.id);
+      setConversations((list) => list.filter((c) => c.id !== convo.id));
+      toast.success("Conversation deleted");
+    } catch {
+      toast.error("Couldn't delete conversation");
+    }
   }
 
   function openSheet(convo) {
@@ -106,43 +152,96 @@ export default function MessagesScreen() {
   async function bulkDelete() {
     const count = selected.size;
     const ok = await confirm({
-      title: `Delete ${count} conversation${count === 1 ? '' : 's'}?`,
+      title: `Delete ${count} conversation${count === 1 ? "" : "s"}?`,
       message: "This can't be undone.",
-      confirmLabel: 'Delete',
+      confirmLabel: "Delete",
       destructive: true,
     });
     if (!ok) return;
-    setConversations((list) => list.filter((c) => !selected.has(c.id)));
-    exitSelectMode();
-    toast.success(`${count} deleted`);
+    try {
+      await Promise.all([...selected].map(deleteConversation));
+      setConversations((list) => list.filter((c) => !selected.has(c.id)));
+      exitSelectMode();
+      toast.success(`${count} deleted`);
+    } catch {
+      await load();
+      toast.error("Couldn't delete every conversation");
+    }
   }
-  function bulkMute() {
+  async function bulkMute() {
     const count = selected.size;
-    setConversations((list) => list.map((c) => (selected.has(c.id) ? { ...c, muted: true } : c)));
-    exitSelectMode();
-    toast.show(`${count} muted`);
+    try {
+      await Promise.all([...selected].map((id) => muteConversation(id, true)));
+      setConversations((list) =>
+        list.map((c) => (selected.has(c.id) ? { ...c, muted: true } : c)),
+      );
+      exitSelectMode();
+      toast.show(`${count} muted`);
+    } catch {
+      await load();
+      toast.error("Couldn't mute every conversation");
+    }
   }
-  function bulkRead() {
+  async function bulkRead() {
     const count = selected.size;
-    setConversations((list) => list.map((c) => (selected.has(c.id) ? { ...c, unread: 0 } : c)));
-    exitSelectMode();
-    toast.show(`${count} marked read`);
+    try {
+      await Promise.all(
+        [...selected].map((id) => patchConversation(id, { unreadCount: 0 })),
+      );
+      setConversations((list) =>
+        list.map((c) => (selected.has(c.id) ? { ...c, unread: 0 } : c)),
+      );
+      exitSelectMode();
+      toast.show(`${count} marked read`);
+    } catch {
+      await load();
+      toast.error("Couldn't mark every conversation read");
+    }
   }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = q ? conversations.filter((c) => c.name.toLowerCase().includes(q)) : conversations;
-    return [...base].sort((a, b) => (b.pinned - a.pinned) || (b.lastMessageAt - a.lastMessageAt));
+    const base = q
+      ? conversations.filter((c) => c.name.toLowerCase().includes(q))
+      : conversations;
+    return [...base].sort(
+      (a, b) => b.pinned - a.pinned || b.lastMessageAt - a.lastMessageAt,
+    );
   }, [conversations, query]);
 
   const sheetActions = sheetFor
     ? [
-        { key: 'pin', icon: sheetFor.pinned ? 'pin' : 'pin-outline', label: sheetFor.pinned ? 'Unpin' : 'Pin', onPress: () => togglePin(sheetFor) },
-        { key: 'mute', icon: 'volume-mute-outline', label: sheetFor.muted ? 'Unmute' : 'Mute', onPress: () => toggleMute(sheetFor) },
-        { key: 'unread', icon: 'mail-unread-outline', label: 'Mark unread', onPress: () => markUnread(sheetFor) },
-        { key: 'archive', icon: 'archive-outline', label: 'Archive', onPress: () => remove(sheetFor) },
-        { key: 'select', icon: 'checkmark-circle-outline', label: 'Select', onPress: () => enterSelectMode(sheetFor) },
-        { key: 'delete', icon: 'trash-outline', label: 'Delete', destructive: true, onPress: () => remove(sheetFor) },
+        {
+          key: "pin",
+          icon: sheetFor.pinned ? "pin" : "pin-outline",
+          label: sheetFor.pinned ? "Unpin" : "Pin",
+          onPress: () => togglePin(sheetFor),
+        },
+        {
+          key: "mute",
+          icon: "volume-mute-outline",
+          label: sheetFor.muted ? "Unmute" : "Mute",
+          onPress: () => toggleMute(sheetFor),
+        },
+        {
+          key: "unread",
+          icon: "mail-unread-outline",
+          label: "Mark unread",
+          onPress: () => markUnread(sheetFor),
+        },
+        {
+          key: "select",
+          icon: "checkmark-circle-outline",
+          label: "Select",
+          onPress: () => enterSelectMode(sheetFor),
+        },
+        {
+          key: "delete",
+          icon: "trash-outline",
+          label: "Delete",
+          destructive: true,
+          onPress: () => remove(sheetFor),
+        },
       ]
     : [];
 
@@ -161,14 +260,24 @@ export default function MessagesScreen() {
         <View style={{ flex: 1 }} />
         {!selectMode ? (
           <>
-            <HeaderIconButton icon="search-outline" size={30} onPress={() => router.push('/search')} />
-            <HeaderIconButton icon="create-outline" size={30} onPress={() => router.push('/compose')} />
+            <HeaderIconButton
+              icon="search-outline"
+              size={30}
+              onPress={() => router.push("/search")}
+            />
+            <HeaderIconButton
+              icon="create-outline"
+              size={30}
+              onPress={() => router.push("/compose")}
+            />
           </>
         ) : null}
       </View>
 
       <View style={styles.titleRow}>
-        <Text style={styles.title}>{selectMode ? `${selected.size} Selected` : 'Messages'}</Text>
+        <Text style={styles.title}>
+          {selectMode ? `${selected.size} Selected` : "Messages"}
+        </Text>
       </View>
 
       <View style={styles.searchBar}>
@@ -182,15 +291,24 @@ export default function MessagesScreen() {
         />
       </View>
 
-      {phase === 'loading' ? (
+      {phase === "loading" ? (
         <SkeletonList count={7} row={SkeletonListRow} />
-      ) : phase === 'error' ? (
-        <ErrorState message="Couldn't load your messages. Check your connection and try again." onRetry={retryLoad} />
+      ) : phase === "error" ? (
+        <ErrorState
+          message="Couldn't load your messages. Check your connection and try again."
+          onRetry={retryLoad}
+        />
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(c) => c.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+            />
+          }
           renderItem={({ item }) => (
             <ConversationRow
               convo={item}
@@ -207,64 +325,163 @@ export default function MessagesScreen() {
           )}
           ListEmptyComponent={
             <EmptyState
-              icon={conversations.length === 0 ? 'chatbubbles-outline' : 'search-outline'}
-              title={conversations.length === 0 ? 'No messages yet' : 'No matches'}
-              message={conversations.length === 0 ? 'Start a new message to see it here.' : `Nothing matches "${query}".`}
-              actionLabel={conversations.length === 0 ? 'New message' : undefined}
-              onAction={conversations.length === 0 ? () => router.push('/compose') : undefined}
+              icon={
+                conversations.length === 0
+                  ? "chatbubbles-outline"
+                  : "search-outline"
+              }
+              title={
+                conversations.length === 0 ? "No messages yet" : "No matches"
+              }
+              message={
+                conversations.length === 0
+                  ? "Start a new message to see it here."
+                  : `Nothing matches "${query}".`
+              }
+              actionLabel={
+                conversations.length === 0 ? "New message" : undefined
+              }
+              onAction={
+                conversations.length === 0
+                  ? () => router.push("/compose")
+                  : undefined
+              }
             />
           }
-          contentContainerStyle={{ paddingBottom: (selectMode ? 90 : 0) + space.xl * 3, flexGrow: 1 }}
+          contentContainerStyle={{
+            paddingBottom: (selectMode ? 90 : 0) + space.xl * 3,
+            flexGrow: 1,
+          }}
         />
       )}
 
       {selectMode ? (
-        <View style={[styles.toolbar, { paddingBottom: insets.bottom + space.sm }]}>
-          <Pressable style={styles.toolbarBtn} onPress={bulkRead} disabled={!selected.size}>
-            <Ionicons name="checkmark-done-outline" size={21} color={selected.size ? colors.textPrimary : colors.textMuted} />
-            <Text style={[styles.toolbarLabel, !selected.size && { color: colors.textMuted }]}>Read</Text>
+        <View
+          style={[styles.toolbar, { paddingBottom: insets.bottom + space.sm }]}
+        >
+          <Pressable
+            style={styles.toolbarBtn}
+            onPress={bulkRead}
+            disabled={!selected.size}
+          >
+            <Ionicons
+              name="checkmark-done-outline"
+              size={21}
+              color={selected.size ? colors.textPrimary : colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.toolbarLabel,
+                !selected.size && { color: colors.textMuted },
+              ]}
+            >
+              Read
+            </Text>
           </Pressable>
-          <Pressable style={styles.toolbarBtn} onPress={bulkMute} disabled={!selected.size}>
-            <Ionicons name="volume-mute-outline" size={21} color={selected.size ? colors.textPrimary : colors.textMuted} />
-            <Text style={[styles.toolbarLabel, !selected.size && { color: colors.textMuted }]}>Mute</Text>
+          <Pressable
+            style={styles.toolbarBtn}
+            onPress={bulkMute}
+            disabled={!selected.size}
+          >
+            <Ionicons
+              name="volume-mute-outline"
+              size={21}
+              color={selected.size ? colors.textPrimary : colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.toolbarLabel,
+                !selected.size && { color: colors.textMuted },
+              ]}
+            >
+              Mute
+            </Text>
           </Pressable>
-          <Pressable style={styles.toolbarBtn} onPress={bulkDelete} disabled={!selected.size}>
-            <Ionicons name="trash-outline" size={21} color={selected.size ? colors.danger : colors.textMuted} />
-            <Text style={[styles.toolbarLabel, { color: selected.size ? colors.danger : colors.textMuted }]}>Delete</Text>
+          <Pressable
+            style={styles.toolbarBtn}
+            onPress={bulkDelete}
+            disabled={!selected.size}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={21}
+              color={selected.size ? colors.danger : colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.toolbarLabel,
+                { color: selected.size ? colors.danger : colors.textMuted },
+              ]}
+            >
+              Delete
+            </Text>
           </Pressable>
         </View>
       ) : null}
 
-      <ActionSheet visible={!!sheetFor} onClose={() => setSheetFor(null)} title={sheetFor?.name} actions={sheetActions} />
+      <ActionSheet
+        visible={!!sheetFor}
+        onClose={() => setSheetFor(null)}
+        title={sheetFor?.name}
+        actions={sheetActions}
+      />
     </View>
   );
 }
 
 function getStyles(colors) {
   return StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  navBar: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: space.lg, paddingTop: space.sm, height: 30,
-  },
-  navAction: { ...type.body, color: colors.accent, fontWeight: '600' },
-  titleRow: { paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.sm },
-  title: { ...type.display, fontSize: 32, color: colors.textPrimary },
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: space.sm,
-    marginHorizontal: space.lg, marginBottom: space.sm,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    paddingHorizontal: space.md, height: 36,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 15, padding: 0 },
-  toolbar: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    flexDirection: 'row', justifyContent: 'space-around',
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingTop: space.sm,
-  },
-  toolbarBtn: { alignItems: 'center', gap: 3, minWidth: 64 },
-  toolbarLabel: { ...type.small, color: colors.textPrimary, fontWeight: '600' },
+    screen: { flex: 1, backgroundColor: colors.bg },
+    navBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: space.lg,
+      paddingTop: space.sm,
+      height: 30,
+    },
+    navAction: { ...type.body, color: colors.accent, fontWeight: "600" },
+    titleRow: {
+      paddingHorizontal: space.lg,
+      paddingTop: space.xs,
+      paddingBottom: space.sm,
+    },
+    title: { ...type.display, fontSize: 32, color: colors.textPrimary },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.sm,
+      marginHorizontal: space.lg,
+      marginBottom: space.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      paddingHorizontal: space.md,
+      height: 36,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontSize: 15,
+      padding: 0,
+    },
+    toolbar: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: "row",
+      justifyContent: "space-around",
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: space.sm,
+    },
+    toolbarBtn: { alignItems: "center", gap: 3, minWidth: 64 },
+    toolbarLabel: {
+      ...type.small,
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
   });
 }

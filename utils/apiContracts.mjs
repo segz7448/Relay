@@ -1,0 +1,1 @@
+export const apiKeyFromWire=x=>({id:x.id,name:x.name,prefix:x.key_prefix??x.prefix,scope:x.scope,lastUsedAt:x.last_used_at??null,revoked:!!x.revoked,createdAt:x.created_at});export const apiKeyFromCreate=x=>({...apiKeyFromWire(x),secret:x.key});

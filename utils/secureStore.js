@@ -17,8 +17,8 @@ export async function getItemAsync(key) {
   if (Platform.OS === 'web') {
     try {
       return window.localStorage.getItem(PREFIX + key);
-    } catch {
-      return null;
+    } catch (error) {
+      throw new Error(`secure_store_read_failed: ${error?.message || error}`);
     }
   }
   return SecureStore.getItemAsync(key);
@@ -28,8 +28,8 @@ export async function setItemAsync(key, value) {
   if (Platform.OS === 'web') {
     try {
       window.localStorage.setItem(PREFIX + key, value);
-    } catch {
-      // storage full/blocked — same "best effort" contract as native callers handle
+    } catch (error) {
+      throw new Error(`secure_store_write_failed: ${error?.message || error}`);
     }
     return;
   }
@@ -40,8 +40,8 @@ export async function deleteItemAsync(key) {
   if (Platform.OS === 'web') {
     try {
       window.localStorage.removeItem(PREFIX + key);
-    } catch {
-      // ignore
+    } catch (error) {
+      throw new Error(`secure_store_delete_failed: ${error?.message || error}`);
     }
     return;
   }

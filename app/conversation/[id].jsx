@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,45 +7,59 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import { type, space, avatarPalette, useTheme } from '../../theme';
-import { api } from '../../api';
-import { fetchConversation, fetchMessages, forwardMessage, reactToMessage, sendMessage } from '../../messagesApi';
-import MessageBubble from '../../components/MessageBubble';
-import MessageActionSheet from '../../components/MessageActionSheet';
-import EmojiPickerSheet from '../../components/EmojiPickerSheet';
-import ReactionsViewSheet from '../../components/ReactionsViewSheet';
-import Composer from '../../components/Composer';
-import AttachmentSheet from '../../components/AttachmentSheet';
-import FilePreviewSheet from '../../components/FilePreviewSheet';
-import ContactPickerSheet from '../../components/ContactPickerSheet';
-import ForwardSheet from '../../components/ForwardSheet';
-import { extensionOf, mediaKindOf, guessMime } from '../../utils/fileTypes';
-import { toggleReaction } from '../../utils/reactions';
-import { SkeletonListRow } from '../../components/Skeleton';
-import { useToast } from '../../components/Toast';
-import { useConfirm } from '../../components/ConfirmDialog';
+} from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import { type, space, avatarPalette, useTheme } from "../../theme";
+import { api } from "../../api";
+import { holdCallSession } from "../../callSession";
+import { createPeer, microphoneStream, stopMedia } from "../../callEngine";
+import {
+  fetchConversation,
+  fetchMessages,
+  forwardMessage,
+  reactToMessage,
+  sendMessage,
+} from "../../messagesApi";
+import MessageBubble from "../../components/MessageBubble";
+import Avatar from "../../components/Avatar";
+import MessageActionSheet from "../../components/MessageActionSheet";
+import EmojiPickerSheet from "../../components/EmojiPickerSheet";
+import ReactionsViewSheet from "../../components/ReactionsViewSheet";
+import Composer from "../../components/Composer";
+import AttachmentSheet from "../../components/AttachmentSheet";
+import FilePreviewSheet from "../../components/FilePreviewSheet";
+import ContactPickerSheet from "../../components/ContactPickerSheet";
+import ForwardSheet from "../../components/ForwardSheet";
+import { extensionOf, mediaKindOf, guessMime } from "../../utils/fileTypes";
+import { toggleReaction } from "../../utils/reactions";
+import { SkeletonListRow } from "../../components/Skeleton";
+import { useToast } from "../../components/Toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 // --- Attachment pickers -----------------------------------------------
 
 async function pickFromLibrary(wantVideo) {
-  const ImagePicker = await import('expo-image-picker');
+  const ImagePicker = await import("expo-image-picker");
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return null;
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: wantVideo ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+    mediaTypes: wantVideo
+      ? ImagePicker.MediaTypeOptions.Videos
+      : ImagePicker.MediaTypeOptions.Images,
     quality: 0.9,
   });
   if (result.canceled) return null;
   const asset = result.assets[0];
-  const name = asset.fileName || asset.uri.split('/').pop() || (wantVideo ? 'video.mp4' : 'photo.jpg');
-  const ext = extensionOf(name) || (wantVideo ? 'mp4' : 'jpg');
+  const name =
+    asset.fileName ||
+    asset.uri.split("/").pop() ||
+    (wantVideo ? "video.mp4" : "photo.jpg");
+  const ext = extensionOf(name) || (wantVideo ? "mp4" : "jpg");
   return {
-    kind: wantVideo ? 'video' : 'image',
+    kind: wantVideo ? "video" : "image",
     name,
     ext,
     size: asset.fileSize ?? null,
@@ -56,16 +70,16 @@ async function pickFromLibrary(wantVideo) {
 }
 
 async function pickFromCamera() {
-  const ImagePicker = await import('expo-image-picker');
+  const ImagePicker = await import("expo-image-picker");
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) return null;
   const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
   if (result.canceled) return null;
   const asset = result.assets[0];
   const name = asset.fileName || `camera_${Date.now()}.jpg`;
-  const ext = extensionOf(name) || 'jpg';
+  const ext = extensionOf(name) || "jpg";
   return {
-    kind: mediaKindOf(ext) === 'video' ? 'video' : 'image',
+    kind: mediaKindOf(ext) === "video" ? "video" : "image",
     name,
     ext,
     size: asset.fileSize ?? null,
@@ -76,9 +90,9 @@ async function pickFromCamera() {
 }
 
 async function pickDocument(audioOnly) {
-  const DocumentPicker = await import('expo-document-picker');
+  const DocumentPicker = await import("expo-document-picker");
   const result = await DocumentPicker.getDocumentAsync({
-    type: audioOnly ? 'audio/*' : '*/*',
+    type: audioOnly ? "audio/*" : "*/*",
     copyToCacheDirectory: true,
     multiple: false,
   });
@@ -86,7 +100,7 @@ async function pickDocument(audioOnly) {
   const asset = result.assets[0];
   const ext = extensionOf(asset.name);
   return {
-    kind: audioOnly ? 'audio' : mediaKindOf(ext),
+    kind: audioOnly ? "audio" : mediaKindOf(ext),
     name: asset.name,
     ext,
     size: asset.size ?? null,
@@ -97,11 +111,15 @@ async function pickDocument(audioOnly) {
 }
 
 async function pickCurrentLocation() {
-  const Location = await import('expo-location');
+  const Location = await import("expo-location");
   const perm = await Location.requestForegroundPermissionsAsync();
   if (!perm.granted) return null;
   const pos = await Location.getCurrentPositionAsync({});
-  return { kind: 'location', name: 'Location', coords: { lat: pos.coords.latitude, lng: pos.coords.longitude } };
+  return {
+    kind: "location",
+    name: "Location",
+    coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+  };
 }
 
 function hashColor(id) {
@@ -117,10 +135,10 @@ function initials(name) {
 }
 
 function statusLabel(convo) {
-  if (!convo) return '';
-  if (convo.typing) return 'typing…';
-  if (convo.online) return 'online';
-  return 'last seen recently';
+  if (!convo) return "";
+  if (convo.typing) return "typing…";
+  if (convo.online) return "online";
+  return "last seen recently";
 }
 
 export default function ConversationScreen() {
@@ -153,7 +171,9 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     setLoadingMessages(true);
-    fetchConversation(id).catch(() => null).then(setConvo);
+    fetchConversation(id)
+      .catch(() => null)
+      .then(setConvo);
     fetchMessages(id)
       .then(setMessages)
       .catch(() => toast.error("Couldn't load this conversation"))
@@ -168,7 +188,11 @@ export default function ConversationScreen() {
     const idx = messages.findIndex((m) => m.id === highlight);
     if (idx < 0) return;
     const t = setTimeout(() => {
-      listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+      listRef.current?.scrollToIndex({
+        index: idx,
+        animated: true,
+        viewPosition: 0.5,
+      });
       setHighlightedId(highlight);
       setTimeout(() => setHighlightedId(null), 1600);
     }, 80);
@@ -183,11 +207,19 @@ export default function ConversationScreen() {
     };
   }, []);
 
-  const byId = useMemo(() => Object.fromEntries(messages.map((m) => [m.id, m])), [messages]);
-  const pinnedMessage = useMemo(() => messages.find((m) => m.pinned), [messages]);
+  const byId = useMemo(
+    () => Object.fromEntries(messages.map((m) => [m.id, m])),
+    [messages],
+  );
+  const pinnedMessage = useMemo(
+    () => messages.find((m) => m.pinned),
+    [messages],
+  );
 
   const patch = useCallback((msgId, changes) => {
-    setMessages((list) => list.map((m) => (m.id === msgId ? { ...m, ...changes } : m)));
+    setMessages((list) =>
+      list.map((m) => (m.id === msgId ? { ...m, ...changes } : m)),
+    );
   }, []);
 
   function toggleSelect(message) {
@@ -205,7 +237,7 @@ export default function ConversationScreen() {
 
   async function handleSend(text) {
     if (editingId) {
-      toast.error('Message editing is not supported by the server');
+      toast.error("Message editing is not supported by the server");
       setEditingId(null);
       return;
     }
@@ -227,13 +259,20 @@ export default function ConversationScreen() {
       let attachmentUrl;
       if (attachment.uri) {
         const form = new FormData();
-        form.append('file', { uri: attachment.uri, name: attachment.name, type: attachment.mime || 'application/octet-stream' });
+        form.append("file", {
+          uri: attachment.uri,
+          name: attachment.name,
+          type: attachment.mime || "application/octet-stream",
+        });
         const uploaded = await api.uploadFile(form);
         attachmentUrl = uploaded.url;
       }
       const saved = await sendMessage(id, {
-        text: '', attachmentUrl, attachmentType: attachment.kind,
-        attachmentName: attachment.name, attachmentSize: attachment.size,
+        text: "",
+        attachmentUrl,
+        attachmentType: attachment.kind,
+        attachmentName: attachment.name,
+        attachmentSize: attachment.size,
       });
       setMessages((list) => [...list, saved]);
     } catch (error) {
@@ -243,27 +282,27 @@ export default function ConversationScreen() {
 
   async function handleAttachSelect(key) {
     try {
-      if (key === 'photo') {
+      if (key === "photo") {
         const a = await pickFromLibrary(false);
         if (a) setPendingAttachment(a);
-      } else if (key === 'video') {
+      } else if (key === "video") {
         const a = await pickFromLibrary(true);
         if (a) setPendingAttachment(a);
-      } else if (key === 'camera') {
+      } else if (key === "camera") {
         const a = await pickFromCamera();
         if (a) setPendingAttachment(a);
-      } else if (key === 'document') {
+      } else if (key === "document") {
         const a = await pickDocument(false);
         if (a) setPendingAttachment(a);
-      } else if (key === 'file') {
+      } else if (key === "file") {
         const a = await pickDocument(false);
         if (a) setPendingAttachment(a);
-      } else if (key === 'audio') {
+      } else if (key === "audio") {
         const a = await pickDocument(true);
         if (a) setPendingAttachment(a);
-      } else if (key === 'contact') {
+      } else if (key === "contact") {
         setContactSheetVisible(true);
-      } else if (key === 'location') {
+      } else if (key === "location") {
         const a = await pickCurrentLocation();
         if (a) sendAttachmentMessage(a);
       }
@@ -273,10 +312,11 @@ export default function ConversationScreen() {
   }
 
   async function react(messageOrId, emoji) {
-    const msgId = typeof messageOrId === 'string' ? messageOrId : messageOrId.id;
+    const msgId =
+      typeof messageOrId === "string" ? messageOrId : messageOrId.id;
     const current = byId[msgId];
     if (!current) return;
-    const optimistic = toggleReaction(current.reactions, emoji, 'You');
+    const optimistic = toggleReaction(current.reactions, emoji, "You");
     patch(msgId, { reactions: optimistic });
     try {
       const saved = await reactToMessage(id, msgId, emoji);
@@ -298,15 +338,15 @@ export default function ConversationScreen() {
   // Composer renders the preview identically either way.
   const handleSwipeReply = useCallback(
     (message) => {
-      const isOut = message.dir === 'out';
+      const isOut = message.dir === "out";
       setReplyingTo({
         id: message.id,
-        author: isOut ? 'yourself' : convo?.name ?? 'them',
+        author: isOut ? "yourself" : (convo?.name ?? "them"),
         text:
           message.text ||
           (message.attachment
             ? `📎 ${message.attachment.name || message.attachment.kind}`
-            : 'Message'),
+            : "Message"),
       });
     },
     [convo],
@@ -321,7 +361,11 @@ export default function ConversationScreen() {
       const idx = messages.findIndex((m) => m.id === originalId);
       if (idx < 0) return;
 
-      listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+      listRef.current?.scrollToIndex({
+        index: idx,
+        animated: true,
+        viewPosition: 0.5,
+      });
 
       setHighlightedId(originalId);
       setTimeout(() => setHighlightedId(null), 1600);
@@ -330,50 +374,105 @@ export default function ConversationScreen() {
   );
 
   const actionsFor = (message) => {
-    const isOut = message.dir === 'out';
+    const isOut = message.dir === "out";
     const base = [
       {
-        key: 'reply',
-        label: 'Reply',
-        icon: 'arrow-undo-outline',
+        key: "reply",
+        label: "Reply",
+        icon: "arrow-undo-outline",
         onPress: (m) =>
           setReplyingTo({
             id: m.id,
-            author: isOut ? 'yourself' : convo?.name ?? 'them',
+            author: isOut ? "yourself" : (convo?.name ?? "them"),
             text: m.text,
           }),
       },
-      { key: 'forward', label: 'Forward', icon: 'arrow-redo-outline', onPress: (m) => setForwardFor([m]) },
-      { key: 'copy', label: 'Copy', icon: 'copy-outline', onPress: async (m) => {
-        if (!m.text) return;
-        await Clipboard.setStringAsync(m.text);
-        toast.success('Copied to clipboard');
-      } },
+      {
+        key: "forward",
+        label: "Forward",
+        icon: "arrow-redo-outline",
+        onPress: (m) => setForwardFor([m]),
+      },
+      {
+        key: "copy",
+        label: "Copy",
+        icon: "copy-outline",
+        onPress: async (m) => {
+          if (!m.text) return;
+          await Clipboard.setStringAsync(m.text);
+          toast.success("Copied to clipboard");
+        },
+      },
     ];
     return base;
   };
+
+  async function startVoiceCall() {
+    if (!convo?.refId)
+      return toast.error("This contact is not linked to a Relay user");
+    let local;
+    let peer;
+    try {
+      local = await microphoneStream();
+      const queuedIce = [];
+      const ice = await loadIceServers();
+      peer = createPeer({ iceServers: ice.iceServers });
+      peer.onicecandidate = (event) => {
+        if (event.candidate) queuedIce.push(event.candidate.toJSON());
+      };
+      local.getTracks().forEach((track) => peer.addTrack(track, local));
+      const offer = await peer.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false,
+      });
+      await peer.setLocalDescription(offer);
+      const created = await api.startCall({ calleeId: convo.refId, offer });
+      await Promise.all(
+        queuedIce.map((candidate) => api.addCallIce(created.id, candidate)),
+      );
+      holdCallSession(created.id, {
+        peer,
+        stream: local,
+        turnConfigured: ice.turnConfigured,
+      });
+      router.push(`/call/${created.id}`);
+    } catch (error) {
+      peer?.close();
+      stopMedia(local);
+      toast.error(error.message || "Could not start voice call");
+    }
+  }
 
   const editingMessage = editingId ? byId[editingId] : null;
 
   async function handleForward(targetIds) {
     const msgs = forwardFor ?? [];
     for (const m of msgs) {
-      await forwardMessage(m, targetIds, convo?.name ?? 'Unknown');
+      await forwardMessage(m, targetIds, convo?.name ?? "Unknown");
     }
     setForwardFor(null);
-    const chatWord = targetIds.length === 1 ? 'chat' : 'chats';
+    const chatWord = targetIds.length === 1 ? "chat" : "chats";
     toast.success(`Sent to ${targetIds.length} ${chatWord}`);
   }
 
   return (
-    <View style={[styles.screen, chatBackgroundColor ? { backgroundColor: chatBackgroundColor } : null]}>
+    <View
+      style={[
+        styles.screen,
+        chatBackgroundColor ? { backgroundColor: chatBackgroundColor } : null,
+      ]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         {selectMode ? (
           <>
-            <Pressable onPress={exitSelection} hitSlop={10} style={styles.backBtn}>
+            <Pressable
+              onPress={exitSelection}
+              hitSlop={10}
+              style={styles.backBtn}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
             <Text style={styles.selectionCount}>{selected.size} selected</Text>
@@ -381,65 +480,106 @@ export default function ConversationScreen() {
               onPress={async () => {
                 const count = selected.size;
                 const ok = await confirm({
-                  title: 'Delete messages?',
-                  message: `Delete ${count} selected message${count === 1 ? '' : 's'}? This can't be undone.`,
-                  confirmLabel: 'Delete',
+                  title: "Delete messages?",
+                  message: `Delete ${count} selected message${count === 1 ? "" : "s"}? This can't be undone.`,
+                  confirmLabel: "Delete",
                   destructive: true,
                 });
                 if (!ok) return;
                 setMessages((list) => list.filter((m) => !selected.has(m.id)));
                 exitSelection();
-                toast.success(`${count} message${count === 1 ? '' : 's'} deleted`);
+                toast.success(
+                  `${count} message${count === 1 ? "" : "s"} deleted`,
+                );
               }}
               hitSlop={10}
               disabled={selected.size === 0}
             >
-              <Ionicons name="trash-outline" size={22} color={selected.size ? colors.danger : colors.textMuted} />
+              <Ionicons
+                name="trash-outline"
+                size={22}
+                color={selected.size ? colors.danger : colors.textMuted}
+              />
             </Pressable>
           </>
         ) : (
           <>
-            <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={10}
+              style={styles.backBtn}
+            >
               <Ionicons name="chevron-back" size={26} color={colors.accent} />
             </Pressable>
 
             <Pressable
               style={styles.identity}
               onPress={() => {
-                if (convo?.kind === 'bot') router.push(`/bot/${convo.id}`);
-                else if (convo?.kind === 'direct') router.push(`/contact/${convo.id}`);
+                if (convo?.kind === "bot") router.push(`/bot/${convo.id}`);
+                else if (convo?.kind === "direct")
+                  router.push(`/contact/${convo.id}`);
               }}
             >
-              <View style={[styles.avatar, { backgroundColor: convo ? hashColor(convo.id) : colors.surfaceRaised }]}>
-                <Text style={styles.avatarText}>{convo ? initials(convo.name) : ''}</Text>
-              </View>
+              <Avatar uri={convo?.photoUrl} name={convo?.name} size={34} />
               <View style={styles.nameCol}>
-                <Text style={styles.name} numberOfLines={1}>{convo?.name ?? ''}</Text>
+                <Text style={styles.name} numberOfLines={1}>
+                  {convo?.name ?? ""}
+                </Text>
                 <Text
-                  style={[styles.subtitle, convo?.typing && { color: colors.accent }]}
+                  style={[
+                    styles.subtitle,
+                    convo?.typing && { color: colors.accent },
+                  ]}
                   numberOfLines={1}
                 >
-                  {convo?.username ? `@${convo.username} · ` : ''}
+                  {convo?.username ? `@${convo.username} · ` : ""}
                   {statusLabel(convo)}
                 </Text>
               </View>
             </Pressable>
 
             <View style={styles.headerActions}>
-              {convo?.kind === 'bot' ? (
-                <Pressable hitSlop={8} style={styles.headerBtn} onPress={() => router.push(`/bot/${convo.id}`)}>
-                  <Ionicons name="hardware-chip-outline" size={21} color={colors.accent} />
+              {convo?.kind === "direct" ? (
+                <Pressable
+                  hitSlop={8}
+                  style={styles.headerBtn}
+                  onPress={startVoiceCall}
+                  accessibilityLabel="Start voice call"
+                >
+                  <Ionicons
+                    name="call-outline"
+                    size={21}
+                    color={colors.accent}
+                  />
+                </Pressable>
+              ) : null}
+              {convo?.kind === "bot" ? (
+                <Pressable
+                  hitSlop={8}
+                  style={styles.headerBtn}
+                  onPress={() => router.push(`/bot/${convo.id}`)}
+                >
+                  <Ionicons
+                    name="hardware-chip-outline"
+                    size={21}
+                    color={colors.accent}
+                  />
                 </Pressable>
               ) : null}
               <Pressable
                 hitSlop={8}
                 style={styles.headerBtn}
                 onPress={() => {
-                  if (convo?.kind === 'bot') router.push(`/bot/${convo.id}`);
-                  else if (convo?.kind === 'direct') router.push(`/contact/${convo.id}`);
+                  if (convo?.kind === "bot") router.push(`/bot/${convo.id}`);
+                  else if (convo?.kind === "direct")
+                    router.push(`/contact/${convo.id}`);
                 }}
               >
-                <Ionicons name="ellipsis-horizontal" size={21} color={colors.accent} />
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={21}
+                  color={colors.accent}
+                />
               </Pressable>
             </View>
           </>
@@ -451,17 +591,20 @@ export default function ConversationScreen() {
           style={styles.pinnedBar}
           onPress={() => {
             const idx = messages.findIndex((m) => m.id === pinnedMessage.id);
-            if (idx >= 0) listRef.current?.scrollToIndex({ index: idx, animated: true });
+            if (idx >= 0)
+              listRef.current?.scrollToIndex({ index: idx, animated: true });
           }}
         >
           <Ionicons name="pin" size={14} color={colors.accent} />
-          <Text style={styles.pinnedText} numberOfLines={1}>{pinnedMessage.text}</Text>
+          <Text style={styles.pinnedText} numberOfLines={1}>
+            {pinnedMessage.text}
+          </Text>
         </Pressable>
       ) : null}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={insets.top + 56}
       >
         {loadingMessages ? (
@@ -471,51 +614,62 @@ export default function ConversationScreen() {
             ))}
           </View>
         ) : (
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
-          contentContainerStyle={styles.listContent}
-          // When jumping to an index that's outside the rendered window,
-          // FlatList calls this with a best-guess offset so we can land
-          // close enough for the second scrollToIndex attempt to succeed.
-          onScrollToIndexFailed={({ index, averageItemLength }) => {
-            listRef.current?.scrollToOffset({ offset: index * averageItemLength, animated: true });
-            setTimeout(() => {
-              listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
-            }, 120);
-          }}
-          renderItem={({ item }) => (
-            <MessageBubble
-              message={item}
-              // Reply preview: text + author name of the quoted message
-              replyPreviewText={item.replyTo ? byId[item.replyTo]?.text ?? null : null}
-              replyPreviewAuthor={
-                item.replyTo
-                  ? byId[item.replyTo]?.dir === 'out'
-                    ? 'You'
-                    : convo?.name ?? 'them'
-                  : null
-              }
-              selectable={selectMode}
-              selected={selected.has(item.id)}
-              onLongPress={(m) => setSheetFor(m)}
-              onToggleSelect={toggleSelect}
-              onCancelUpload={cancelUpload}
-              onRetryUpload={retryUpload}
-              onReact={react}
-              onDoubleTap={(m) => react(m, '❤️')}
-              onViewReactions={(m) => setReactionsViewFor(m)}
-              onForward={(m) => setForwardFor([m])}
-              // Swipe-to-reply (slide gesture)
-              onSwipeReply={handleSwipeReply}
-              // Tap quoted preview → jump to original + flash highlight
-              onPressReplyBar={handlePressReplyBar}
-              highlighted={item.id === highlightedId}
-            />
-          )}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        />
+          <FlatList
+            ref={listRef}
+            data={messages}
+            keyExtractor={(m) => m.id}
+            contentContainerStyle={styles.listContent}
+            // When jumping to an index that's outside the rendered window,
+            // FlatList calls this with a best-guess offset so we can land
+            // close enough for the second scrollToIndex attempt to succeed.
+            onScrollToIndexFailed={({ index, averageItemLength }) => {
+              listRef.current?.scrollToOffset({
+                offset: index * averageItemLength,
+                animated: true,
+              });
+              setTimeout(() => {
+                listRef.current?.scrollToIndex({
+                  index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }, 120);
+            }}
+            renderItem={({ item }) => (
+              <MessageBubble
+                message={item}
+                // Reply preview: text + author name of the quoted message
+                replyPreviewText={
+                  item.replyTo ? (byId[item.replyTo]?.text ?? null) : null
+                }
+                replyPreviewAuthor={
+                  item.replyTo
+                    ? byId[item.replyTo]?.dir === "out"
+                      ? "You"
+                      : (convo?.name ?? "them")
+                    : null
+                }
+                selectable={selectMode}
+                selected={selected.has(item.id)}
+                onLongPress={(m) => setSheetFor(m)}
+                onToggleSelect={toggleSelect}
+                onCancelUpload={cancelUpload}
+                onRetryUpload={retryUpload}
+                onReact={react}
+                onDoubleTap={(m) => react(m, "❤️")}
+                onViewReactions={(m) => setReactionsViewFor(m)}
+                onForward={(m) => setForwardFor([m])}
+                // Swipe-to-reply (slide gesture)
+                onSwipeReply={handleSwipeReply}
+                // Tap quoted preview → jump to original + flash highlight
+                onPressReplyBar={handlePressReplyBar}
+                highlighted={item.id === highlightedId}
+              />
+            )}
+            onContentSizeChange={() =>
+              listRef.current?.scrollToEnd({ animated: false })
+            }
+          />
         )}
 
         <Composer
@@ -578,7 +732,13 @@ export default function ConversationScreen() {
       <ContactPickerSheet
         visible={contactSheetVisible}
         onClose={() => setContactSheetVisible(false)}
-        onPick={(contact) => sendAttachmentMessage({ kind: 'contact', name: contact.name, contact })}
+        onPick={(contact) =>
+          sendAttachmentMessage({
+            kind: "contact",
+            name: contact.name,
+            contact,
+          })
+        }
       />
 
       <ForwardSheet
@@ -595,8 +755,8 @@ function getStyles(colors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.bg },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       paddingHorizontal: space.sm,
       paddingBottom: space.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -605,20 +765,45 @@ function getStyles(colors) {
     },
     backBtn: { paddingHorizontal: 4, paddingVertical: 4 },
     cancelText: { ...type.body, color: colors.accent },
-    selectionCount: { ...type.h2, color: colors.textPrimary, flex: 1, textAlign: 'center' },
-    identity: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 2 },
-    avatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { color: '#F2F4F6', fontSize: 13, fontWeight: '600' },
+    selectionCount: {
+      ...type.h2,
+      color: colors.textPrimary,
+      flex: 1,
+      textAlign: "center",
+    },
+    identity: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: 2,
+    },
+    avatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarText: { color: "#F2F4F6", fontSize: 13, fontWeight: "600" },
     nameCol: { marginLeft: space.sm, flexShrink: 1 },
     name: { ...type.h2, fontSize: 16, color: colors.textPrimary },
     subtitle: { ...type.small, color: colors.textMuted, marginTop: 1 },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginLeft: space.sm },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.md,
+      marginLeft: space.sm,
+    },
     headerBtn: { padding: 4 },
     pinnedBar: {
-      flexDirection: 'row', alignItems: 'center', gap: space.sm,
-      paddingHorizontal: space.md, paddingVertical: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.sm,
+      paddingHorizontal: space.md,
+      paddingVertical: 8,
       backgroundColor: colors.surface,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
     pinnedText: { ...type.small, color: colors.textSecondary, flex: 1 },
     listContent: { paddingVertical: space.md },

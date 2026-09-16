@@ -13,7 +13,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0F14"
-      }
+      },
+      "permissions": ["RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -22,7 +23,14 @@
       "expo-router",
       "expo-notifications",
       "expo-contacts",
-      "expo-asset"
+      "expo-asset",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": false,
+          "microphonePermission": "Allow Relay to use your microphone for voice calls."
+        }
+      ]
     ]
   }
 }

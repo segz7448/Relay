@@ -10,7 +10,7 @@
 
 import { Platform } from 'react-native';
 import { API_URL } from '../config';
-import { getSessionToken } from '../api';
+import { authenticatedFetch, getSessionToken } from '../api';
 
 export function absoluteApiUrl(url) {
   if (!url) return url;
@@ -34,9 +34,7 @@ export async function resolveAuthedUri(url) {
   const absolute = absoluteApiUrl(url);
   if (Platform.OS !== 'web') return absolute;
   if (absolute.startsWith('blob:')) return absolute;
-  const token = getSessionToken();
-  if (!token) return absolute;
-  const res = await fetch(absolute, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await authenticatedFetch(absolute);
   if (!res.ok) throw new Error(`attachment_fetch_${res.status}`);
   const blob = await res.blob();
   return URL.createObjectURL(blob);

@@ -4,7 +4,6 @@ import { useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { type, space, radius, useTheme } from '../../theme';
-import { SecondaryButton } from '../../components/Button';
 import SettingsSection from '../../components/SettingsSection';
 import SettingsRow from '../../components/SettingsRow';
 import AccountRow from '../../components/AccountRow';
@@ -43,9 +42,7 @@ export default function SettingsScreen() {
   const confirm = useConfirm();
 
   const [account, setAccount] = useState(null);
-  const [newKey, setNewKey] = useState(null); // shown once after rotation
   const [error, setError] = useState(null);
-  const [rotating, setRotating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [switcherSheet, setSwitcherSheet] = useState(null); // the other account, or null
   const [legalModal, setLegalModal] = useState(null); // 'terms' | 'privacy' | null
@@ -95,19 +92,6 @@ export default function SettingsScreen() {
     });
   }
 
-  async function handleRotate() {
-    setRotating(true);
-    try {
-      const { apiKey } = await api.rotateApiKey();
-      setNewKey(apiKey);
-      await updateActiveAccount({ apiKey });
-      toast.success('API key regenerated');
-    } catch (e) {
-      toast.error("Couldn't regenerate your key");
-    } finally {
-      setRotating(false);
-    }
-  }
 
   async function handleSignOut() {
     const activeAccount = accounts.find((a) => a.id === activeId);
@@ -134,11 +118,7 @@ export default function SettingsScreen() {
       confirmLabel: 'Log Out All Devices',
       destructive: true,
       onConfirm: async () => {
-        try {
-          await terminateAllSessions();
-        } catch (e) {
-          // best-effort — still sign out locally even if the server call fails
-        }
+        await terminateAllSessions();
         const activeAccount = accounts.find((a) => a.id === activeId);
         const { remainingCount } = await removeAccount(activeAccount.id);
         if (remainingCount === 0) router.replace('/auth/welcome');
@@ -245,16 +225,22 @@ export default function SettingsScreen() {
         />
       </SettingsSection>
 
-      <Text style={styles.sectionLabel}>API key</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Text style={styles.helper}>
-        Use this key to let an agent or script create and manage bots on your account programmatically.
-      </Text>
-      <View style={styles.keyBox}>
-        <Text style={styles.keyText}>{newKey ?? `${account?.apiKeyPrefix ?? 'sk_live_'}••••••••`}</Text>
-      </View>
-      {newKey ? <Text style={styles.helper}>This is shown once — copy it now.</Text> : null}
-      <SecondaryButton label="Regenerate key" onPress={handleRotate} loading={rotating} />
+      <SettingsSection title="Relay access" footer="Create revocable, scoped keys for external agents. Your app login stays separate and remains valid until you log out or revoke its session.">
+        <SettingsRow
+          icon="hardware-chip"
+          iconColor="#FF8A3D"
+          label="Connect External Agent"
+          value="Scoped access"
+          onPress={() => router.push('/agent-connection')}
+        />
+        <SettingsRow
+          icon="code-slash"
+          iconColor="#5856D6"
+          label="Developer Settings"
+          onPress={() => router.push('/settings-developer')}
+        />
+      </SettingsSection>
 
       <SettingsSection title="About">
         <SettingsRow icon="information-circle" iconColor="#8E8E93" label="About" onPress={() => router.push('/settings-about')} />

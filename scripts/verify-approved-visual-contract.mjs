@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+const reference = readFileSync("visual-references/relay-four-screen-approved.jpg");
+assert.equal(createHash("sha256").update(reference).digest("hex"), "2ee48a360a008c9275fcb9ff907665e86aeb9e1a410c937d1a081ba50b321214", "approved four-screen reference changed");
+const bar=readFileSync("components/GlassTabBar.jsx","utf8"), icons=readFileSync("components/RelayTabIcon.jsx","utf8"), layout=readFileSync("app/(tabs)/_layout.jsx","utf8");
+for(const label of ["Messages","Calls","Server Relay","Settings"]) assert.ok(bar.includes(label),`missing ${label}`);
+for(const route of ["index","calls","relay","settings"]) assert.match(layout,new RegExp(`name=["']${route}["']`));
+for(const symbol of ["messages","calls","relay","settings"]) assert.ok(icons.includes(`${symbol}:`));
+assert.ok(bar.includes("BlurView"),"floating bar lost blur");
+assert.ok(bar.includes("position: \"absolute\""),"bar stopped floating");
+assert.ok(bar.includes("borderRadius: 32"),"capsule shape drifted");
+assert.ok(bar.includes("chipActive"),"selected capsule missing");
+assert.ok(icons.includes("react-native-svg"),"premium vectors replaced by font or placeholders");
+console.log("Approved four-screen visual contract: OK");

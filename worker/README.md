@@ -186,3 +186,10 @@ GET  /files/:key           Download from R2
 Files are stored in R2 under `uploads/<userId>/<timestamp>-<uid>.<ext>`.
 Serve them through a public R2 custom domain (e.g. `files.botmanager.dev`)
 or proxy through the Worker's `/files/:key` route.
+
+## Voice calls
+Voice calls use authenticated Worker signaling plus `react-native-webrtc` audio tracks. Configure `RELAY_TURN_URLS`, `RELAY_TURN_USERNAME`, and `RELAY_TURN_CREDENTIAL` at app build time for production. The checked-in STUN fallback proves direct peer calls but is not production-reliable across restrictive NATs. Calls ring for 60 seconds, use FCM for incoming-call wake-up, poll authenticated SDP/ICE state, and record both participants' history on end.
+
+### Cloudflare Realtime TURN
+
+Relay requests one-hour ICE credentials from its authenticated `GET /calls/ice-servers` route. Keep `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as Worker secrets. The app receives only Cloudflare's short-lived `iceServers` response; do not put either long-lived value in Expo configuration. Credential requests are limited per Relay user and IP, use an opaque per-user analytics tag, and return `Cache-Control: no-store`.

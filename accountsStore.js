@@ -16,17 +16,26 @@
 // multi-account existed), that session is migrated in as this device's
 // first account instead of being dropped.
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import * as SecureStore from './utils/secureStore';
-import { api, setApiKey } from './api';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import * as SecureStore from "./utils/secureStore";
+import { api, setApiKey } from "./api";
+import { beginHydration, completeHydration, failHydration, setUnauthorizedHandler } from "./sessionRuntime.mjs";
+import { loadAccounts, saveAccounts, ACTIVE_KEY } from "./accountPersistence.mjs";
 
-const ACCOUNTS_KEY = 'botmanager_accounts';
-const ACTIVE_KEY = 'botmanager_active_account_id';
+const LEGACY_ACCOUNTS_KEY = "botmanager_accounts";
 
 // Legacy single-session keys from before multi-account existed (auth.js /
 // the original profileStore.js) — read once for migration, never written.
-const LEGACY_SESSION_KEY = 'botmanager_api_key';
-const LEGACY_PROFILE_KEY = 'botmanager_profile';
+const LEGACY_SESSION_KEY = "botmanager_api_key";
+const LEGACY_PROFILE_KEY = "botmanager_profile";
 
 // Same ceiling Telegram uses for non-Premium accounts. Keeps the switcher
 // list from growing unbounded and matches the interface being modeled.
@@ -40,11 +49,11 @@ function shape(data) {
   return {
     id: data.id || makeId(),
     apiKey: data.apiKey,
-    email: data.email || '',
-    name: data.name || '',
-    username: data.username || '',
+    email: data.email || "",
+    name: data.name || "",
+    username: data.username || "",
     photo: data.photo || null,
-    bio: data.bio || '',
+    bio: data.bio || "",
     // Presence for the switcher list: the active account is always
     // "online" (it's live on this device right now); every other account
     // on the list is "offline" with a lastSeenAt stamp of when it was
@@ -60,45 +69,28 @@ function shape(data) {
 // app/contact/[id].jsx) so an account's dot + label are computed the
 // same way everywhere they're shown.
 export function accountPresence(account) {
-  if (!account) return { label: '', online: false };
-  if (account.online) return { label: 'online', online: true };
+  if (!account) return { label: "", online: false };
+  if (account.online) return { label: "online", online: true };
   const ts = account.lastSeenAt;
-  if (!ts) return { label: 'last seen recently', online: false };
+  if (!ts) return { label: "last seen recently", online: false };
   const diff = Date.now() - ts;
   const min = 60 * 1000;
   const hr = 60 * min;
   const day = 24 * hr;
-  if (diff < 2 * min) return { label: 'last seen just now', online: false };
-  if (diff < hr) return { label: `last seen ${Math.floor(diff / min)}m ago`, online: false };
-  if (diff < day) return { label: `last seen ${Math.floor(diff / hr)}h ago`, online: false };
+  if (diff < 2 * min) return { label: "last seen just now", online: false };
+  if (diff < hr)
+    return { label: `last seen ${Math.floor(diff / min)}m ago`, online: false };
+  if (diff < day)
+    return { label: `last seen ${Math.floor(diff / hr)}h ago`, online: false };
   return { label: `last seen ${Math.floor(diff / day)}d ago`, online: false };
 }
 
 async function migrateLegacySession() {
-  let apiKey = null;
-  try {
-    apiKey = await SecureStore.getItemAsync(LEGACY_SESSION_KEY);
-  } catch {
-    // ignore — no legacy session to migrate
-  }
+  const apiKey = await SecureStore.getItemAsync(LEGACY_SESSION_KEY);
   if (!apiKey) return [];
-
   let seeded = {};
-  try {
-    const raw = await SecureStore.getItemAsync(LEGACY_PROFILE_KEY);
-    if (raw) seeded = JSON.parse(raw);
-  } catch {
-    // corrupt/missing legacy profile — fall through
-  }
-  if (!seeded.email && !seeded.name) {
-    try {
-      setApiKey(apiKey);
-      const account = await api.me();
-      if (account?.email) seeded = { email: account.email, name: account.email.split('@')[0] };
-    } catch {
-      // backend unreachable — migrate with a blank profile, editable later
-    }
-  }
+  const raw = await SecureStore.getItemAsync(LEGACY_PROFILE_KEY);
+  if (raw) { try { seeded = JSON.parse(raw); } catch { seeded = {}; } }
   return [shape({ apiKey, ...seeded })];
 }
 
@@ -123,6 +115,7 @@ export function AccountsProvider({ children }) {
   const [activeId, setActiveId] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // Mirrors state for use inside callbacks without stale closures, the
   // same pattern profileStore.js used for its single profile object.
@@ -133,24 +126,18 @@ export function AccountsProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    beginHydration();
     (async () => {
       let list = [];
-      try {
-        const raw = await SecureStore.getItemAsync(ACCOUNTS_KEY);
-        if (raw) list = JSON.parse(raw);
-      } catch {
-        // corrupt/missing — fall through to migration/empty
-      }
-
-      if (list.length === 0) {
-        list = await migrateLegacySession();
-      }
-
       let active = null;
       try {
+        list = await loadAccounts(SecureStore, LEGACY_ACCOUNTS_KEY);
+        if (list.length === 0) list = await migrateLegacySession();
         active = await SecureStore.getItemAsync(ACTIVE_KEY);
-      } catch {
-        // ignore
+      } catch (error) {
+        failHydration(error);
+        if (!cancelled) { setLoadError(error); setLoaded(true); }
+        return;
       }
       if (!list.find((a) => a.id === active)) active = list[0]?.id ?? null;
 
@@ -160,17 +147,14 @@ export function AccountsProvider({ children }) {
       // that never got the chance to flip its own flag off.
       if (active) {
         list = list.map((a) =>
-          a.id === active ? { ...a, online: true } : { ...a, online: false, lastSeenAt: a.lastSeenAt ?? Date.now() }
+          a.id === active
+            ? { ...a, online: true }
+            : { ...a, online: false, lastSeenAt: a.lastSeenAt ?? Date.now() },
         );
       }
 
       const current = list.find((a) => a.id === active);
-      setApiKey(current?.apiKey ?? null);
-
-      if (list.length > 0) {
-        await SecureStore.setItemAsync(ACCOUNTS_KEY, JSON.stringify(list)).catch(() => {});
-        if (active) await SecureStore.setItemAsync(ACTIVE_KEY, active).catch(() => {});
-      }
+      completeHydration(current?.apiKey ?? null);
 
       if (!cancelled) {
         ref.current = { accounts: list, activeId: active };
@@ -184,10 +168,8 @@ export function AccountsProvider({ children }) {
     };
   }, []);
 
-  const persist = useCallback(async (list, active) => {
-    await SecureStore.setItemAsync(ACCOUNTS_KEY, JSON.stringify(list)).catch(() => {});
-    if (active) await SecureStore.setItemAsync(ACTIVE_KEY, active).catch(() => {});
-    else await SecureStore.deleteItemAsync(ACTIVE_KEY).catch(() => {});
+  const persist = useCallback(async (list, active, previous = ref.current.accounts) => {
+    await saveAccounts(SecureStore, list, active, previous);
   }, []);
 
   const beginAddAccount = useCallback(() => setAddingAccount(true), []);
@@ -201,50 +183,64 @@ export function AccountsProvider({ children }) {
   const addAccount = useCallback(
     async (data) => {
       const { accounts: curList, activeId: curActive } = ref.current;
-      const emailKey = (data.email || '').trim().toLowerCase();
-      const usernameKey = (data.username || '').trim().toLowerCase();
+      const emailKey = (data.email || "").trim().toLowerCase();
+      const usernameKey = (data.username || "").trim().toLowerCase();
       const existing = curList.find(
         (a) =>
           (emailKey && a.email && a.email.toLowerCase() === emailKey) ||
-          (usernameKey && a.username && a.username.toLowerCase() === usernameKey)
+          (usernameKey &&
+            a.username &&
+            a.username.toLowerCase() === usernameKey),
       );
 
       const now = Date.now();
       const markPreviousOffline = (list) =>
-        list.map((a) => (a.id === curActive ? { ...a, online: false, lastSeenAt: now } : a));
+        list.map((a) =>
+          a.id === curActive ? { ...a, online: false, lastSeenAt: now } : a,
+        );
 
       if (existing) {
         const nextList = markPreviousOffline(curList).map((a) =>
-          a.id === existing.id ? { ...a, apiKey: data.apiKey, online: true, lastSeenAt: now } : a
+          a.id === existing.id
+            ? { ...a, apiKey: data.apiKey, online: true, lastSeenAt: now }
+            : a,
         );
+        await persist(nextList, existing.id, curList);
         ref.current = { accounts: nextList, activeId: existing.id };
         setAccounts(nextList);
         setActiveId(existing.id);
         setApiKey(data.apiKey);
-        await persist(nextList, existing.id);
         return existing;
       }
 
       if (curList.length >= MAX_ACCOUNTS) {
-        throw new Error(`You can only have up to ${MAX_ACCOUNTS} accounts on this device.`);
+        throw new Error(
+          `You can only have up to ${MAX_ACCOUNTS} accounts on this device.`,
+        );
       }
 
       const account = shape({ ...data, online: true, lastSeenAt: now });
       const nextList = [...markPreviousOffline(curList), account];
+      await persist(nextList, account.id, curList);
       ref.current = { accounts: nextList, activeId: account.id };
       setAccounts(nextList);
       setActiveId(account.id);
       setApiKey(account.apiKey);
-      await persist(nextList, account.id);
 
       // Hydrate real profile fields from /accounts/me
       try {
         const me = await api.me();
         const hydrated = nextList.map((a) =>
           a.id === account.id
-            ? { ...a, name: me.name || a.name, email: me.email || a.email,
-                username: me.username || a.username, bio: me.bio || '', photo: me.photoUrl || null }
-            : a
+            ? {
+                ...a,
+                name: me.name || a.name,
+                email: me.email || a.email,
+                username: me.username || a.username,
+                bio: me.bio || "",
+                photo: me.photoUrl || null,
+              }
+            : a,
         );
         ref.current = { ...ref.current, accounts: hydrated };
         setAccounts(hydrated);
@@ -253,7 +249,7 @@ export function AccountsProvider({ children }) {
 
       return account;
     },
-    [persist]
+    [persist],
   );
 
   const switchAccount = useCallback(
@@ -270,13 +266,13 @@ export function AccountsProvider({ children }) {
         if (a.id === id) return { ...a, online: true, lastSeenAt: now };
         return a;
       });
+      await persist(nextList, id, curList);
       ref.current = { accounts: nextList, activeId: id };
       setAccounts(nextList);
       setActiveId(id);
       setApiKey(target.apiKey);
-      await persist(nextList, id);
     },
-    [persist]
+    [persist],
   );
 
   // Logs an account out of this device. Removing the active account
@@ -289,36 +285,51 @@ export function AccountsProvider({ children }) {
       const { accounts: curList, activeId: curActive } = ref.current;
       const nextList = curList.filter((a) => a.id !== id);
       let nextActive = curActive;
-      if (curActive === id) {
-        nextActive = nextList[0]?.id ?? null;
-        setApiKey(nextList[0]?.apiKey ?? null);
-      }
+      if (curActive === id) nextActive = nextList[0]?.id ?? null;
+      await persist(nextList, nextActive, curList);
+      if (curActive === id) setApiKey(nextList[0]?.apiKey ?? null);
       ref.current = { accounts: nextList, activeId: nextActive };
       setAccounts(nextList);
       setActiveId(nextActive);
-      await persist(nextList, nextActive);
       return { remainingCount: nextList.length };
     },
-    [persist]
+    [persist],
   );
 
   const updateAccount = useCallback(
     async (id, patch) => {
       const { accounts: curList, activeId: curActive } = ref.current;
-      const nextList = curList.map((a) => (a.id === id ? { ...a, ...patch } : a));
+      const nextList = curList.map((a) =>
+        a.id === id ? { ...a, ...patch } : a,
+      );
+      await persist(nextList, curActive, curList);
       ref.current = { accounts: nextList, activeId: curActive };
       setAccounts(nextList);
       if (id === curActive && patch.apiKey) setApiKey(patch.apiKey);
-      await persist(nextList, curActive);
       return nextList.find((a) => a.id === id);
     },
-    [persist]
+    [persist],
   );
 
   const updateActiveAccount = useCallback(
     (patch) => updateAccount(ref.current.activeId, patch),
-    [updateAccount]
+    [updateAccount],
   );
+
+  useEffect(() => setUnauthorizedHandler(async (rejectedToken) => {
+    const { accounts: current, activeId: currentId } = ref.current;
+    const rejected = current.find((account) => account.id === currentId && account.apiKey === rejectedToken);
+    if (!rejected) return;
+    const next = current.filter((account) => account.id !== rejected.id);
+    const nextActive = next[0]?.id ?? null;
+    try {
+      await saveAccounts(SecureStore, next, nextActive);
+      setApiKey(next[0]?.apiKey ?? null);
+      ref.current = { accounts: next, activeId: nextActive };
+      setAccounts(next);
+      setActiveId(nextActive);
+    } catch (error) { setLoadError(error); }
+  }), []);
 
   const activeAccount = accounts.find((a) => a.id === activeId) || null;
 
@@ -328,6 +339,7 @@ export function AccountsProvider({ children }) {
       activeId,
       activeAccount,
       loaded,
+      loadError,
       maxAccounts: MAX_ACCOUNTS,
       addingAccount,
       beginAddAccount,
@@ -343,6 +355,7 @@ export function AccountsProvider({ children }) {
       activeId,
       activeAccount,
       loaded,
+      loadError,
       addingAccount,
       beginAddAccount,
       endAddAccount,
@@ -351,10 +364,14 @@ export function AccountsProvider({ children }) {
       removeAccount,
       updateAccount,
       updateActiveAccount,
-    ]
+    ],
   );
 
-  return <AccountsContext.Provider value={value}>{children}</AccountsContext.Provider>;
+  return (
+    <AccountsContext.Provider value={value}>
+      {children}
+    </AccountsContext.Provider>
+  );
 }
 
 export function useAccounts() {

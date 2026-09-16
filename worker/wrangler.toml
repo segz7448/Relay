@@ -31,3 +31,7 @@ CORS_ORIGIN = "*"
 [dev]
 port = 8787
 local_protocol = "http"
+
+# Cloudflare Realtime TURN (set as Worker secrets; never expose in Expo config)
+# TURN_KEY_ID          — uid returned when a Realtime TURN key is created
+# TURN_KEY_API_TOKEN   — 64-character bearer key returned once with that TURN key

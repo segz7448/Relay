@@ -1,39 +1,43 @@
+import { apiKeyFromWire, apiKeyFromCreate } from "./utils/apiContracts.mjs";
 // devPlatformStore.js — REAL developer platform data.
 // Same exported constants and async function signatures as the original.
 
-import { api } from './api';
+import { api } from "./api";
 
 // ── Constants (unchanged — used by UI pickers) ────────────────────────────────
 
-export const SCOPES = ['Full access', 'Read only', 'Bots only'];
+export const SCOPES = ["Full access", "Read only", "Bots only"];
 
 export const SCOPE_HELP = {
-  'Full access': 'Create, edit, and delete bots, read and write messages, manage webhooks.',
-  'Read only': 'Can read bots, stats, and message history — no create, edit, or delete.',
-  'Bots only': 'Limited to bot CRUD and command management — no account or billing access.',
+  "Full access":
+    "Create, edit, and delete bots, read and write messages, manage webhooks.",
+  "Read only":
+    "Can read bots, stats, and message history — no create, edit, or delete.",
+  "Bots only":
+    "Limited to bot CRUD and command management — no account or billing access.",
 };
 
 export const EVENT_TYPES = [
-  'message.received',
-  'message.sent',
-  'bot.created',
-  'bot.deleted',
-  'user.blocked',
-  'command.triggered',
-  'delivery.failed',
+  "message.received",
+  "message.sent",
+  "bot.created",
+  "bot.deleted",
+  "user.blocked",
+  "command.triggered",
+  "delivery.failed",
 ];
 
 // Re-exported for the Bot Tokens screen (which imports from this file)
-export { fetchBots as fetchBotTokens } from './botsApi';
+export { fetchBots as fetchBotTokens } from "./botsApi";
 
 // ── API Keys ──────────────────────────────────────────────────────────────────
 
 export async function fetchApiKeys() {
-  return api.listApiKeys();
+  return (await api.listApiKeys()).map(apiKeyFromWire);
 }
 
 export async function createApiKey({ name, scope }) {
-  return api.createApiKey({ name, scope });
+  return apiKeyFromCreate(await api.createApiKey({ name, scope }));
 }
 
 export async function revokeApiKey(id) {
@@ -93,4 +97,11 @@ export async function fetchDevSettings() {
 
 export async function updateDevSettings(patch) {
   return api.updateDevSettings(patch);
+}
+
+export async function rotateAccessKey(id) {
+  return apiKeyFromCreate(await api.rotateApiKeyAccess(id));
+}
+export async function fetchAccessKeyAudit(id) {
+  return api.listApiKeyAudit(id);
 }

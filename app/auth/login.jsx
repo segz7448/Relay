@@ -26,7 +26,8 @@ export default function LoginScreen() {
     setError(null);
     setSubmitting(true);
     try {
-      const { apiKey } = await login({ identifier, password });
+      const signedIn = await login({ identifier, password });
+      const { apiKey } = signedIn;
       const trimmed = identifier.trim();
       const isEmail = trimmed.includes('@');
       // This screen doubles as both the first sign-in and "Add Account"
@@ -35,7 +36,11 @@ export default function LoginScreen() {
       await addAccount({
         apiKey,
         email: isEmail ? trimmed : '',
-        username: isEmail ? '' : trimmed.replace(/^@/, ''),
+        name: signedIn.name || '',
+        username: signedIn.username || (isEmail ? '' : trimmed.replace(/^@/, '')),
+        email: signedIn.email || (isEmail ? trimmed : ''),
+        bio: signedIn.bio || '',
+        photo: signedIn.photo || null,
       });
       router.replace('/');
     } catch (e) {

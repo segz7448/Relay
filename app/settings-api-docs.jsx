@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { type, space, radius, useTheme } from '../theme';
 import { hapticTap } from '../utils/haptics';
+import { API_URL } from '../config';
 
-const BASE_URL = 'https://api.botmanager.dev';
+const BASE_URL = API_URL;
 
 const METHOD_COLORS = {
   GET: '#34C759',
@@ -16,11 +17,11 @@ const METHOD_COLORS = {
 
 const SECTIONS = [
   {
-    title: 'Accounts',
+    title: 'Account',
     endpoints: [
-      { method: 'POST', path: '/accounts', desc: 'Create an account. Returns your API key once — store it immediately.', body: '{ "email": "you@example.com" }' },
-      { method: 'GET', path: '/accounts/me', desc: 'Return the authenticated account and its key prefix.' },
-      { method: 'POST', path: '/accounts/me/rotate-key', desc: 'Invalidate the current API key and issue a new one.' },
+      { method: 'GET', path: '/accounts/me', desc: 'Return the authenticated account profile.' },
+      { method: 'PATCH', path: '/accounts/me', desc: 'Update the authenticated account profile.', body: '{ "name": "Relay Operator" }' },
+      { method: 'GET', path: '/accounts/me/sessions', desc: 'List signed-in sessions for this account.' },
     ],
   },
   {
@@ -50,7 +51,7 @@ const SECTIONS = [
 ];
 
 const CURL_EXAMPLE = `curl ${BASE_URL}/bots \\
-  -H "Authorization: Bearer sk_live_..." \\
+  -H "Authorization: Bearer <ACCESS_KEY>" \\
   -H "Content-Type: application/json" \\
   -d '{"name":"OrderBot","username":"orderbot"}'`;
 
@@ -92,10 +93,10 @@ export default function ApiDocsScreen() {
 
       <Text style={[styles.sectionLabel, { marginTop: space.lg }]}>Authentication</Text>
       <Text style={styles.paragraph}>
-        Every request except account creation and webhook delivery requires an API key, sent as a bearer token:
+        Authenticated requests use either an app session token or a scoped external-agent access key, sent as a bearer token:
       </Text>
       <View style={styles.codeBoxStatic}>
-        <Text style={styles.codeText}>Authorization: Bearer sk_live_••••••••••</Text>
+        <Text style={styles.codeText}>Authorization: Bearer {'<session-or-access-key>'}</Text>
       </View>
 
       <Text style={[styles.sectionLabel, { marginTop: space.lg }]}>Example Request</Text>
@@ -130,7 +131,7 @@ export default function ApiDocsScreen() {
       ))}
 
       <Text style={styles.footer}>
-        Rate limits and response shapes may evolve — check the changelog in your dashboard for breaking changes before upgrading production integrations.
+        Rate limits and response shapes may evolve — verify the live Relay discovery document at /agent-api before upgrading production integrations.
       </Text>
     </ScrollView>
   );
