@@ -8,14 +8,15 @@
 import { useMemo, useRef } from 'react';
 import { Animated, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { radius, space, type, useTheme } from '../theme';
 import { springs } from '../utils/motion';
 import { hapticTap } from '../utils/haptics';
 
 export default function BottomSheet({ visible, onClose, title, children, maxHeightRatio = 0.8 }) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, scheme), [colors, scheme]);
   const y = useRef(new Animated.Value(400)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
@@ -70,6 +71,13 @@ export default function BottomSheet({ visible, onClose, title, children, maxHeig
             { maxHeight: `${maxHeightRatio * 100}%`, paddingBottom: insets.bottom + space.md, transform: [{ translateY: y }] },
           ]}
         >
+          <BlurView
+            pointerEvents="none"
+            intensity={scheme === 'light' ? 36 : 46}
+            tint={scheme === 'light' ? 'light' : 'dark'}
+            style={styles.blurFill}
+          />
+          <View pointerEvents="none" style={styles.tint} />
           <View {...pan.panHandlers} style={styles.handleWrap}>
             <View style={styles.handle} />
             {title ? <Text style={styles.title}>{title}</Text> : null}
@@ -81,14 +89,20 @@ export default function BottomSheet({ visible, onClose, title, children, maxHeig
   );
 }
 
-function getStyles(colors) {
+function getStyles(colors, scheme) {
+  const isLight = scheme === 'light';
   return StyleSheet.create({
     backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
     sheet: {
       position: 'absolute', left: 0, right: 0, bottom: 0,
-      backgroundColor: colors.surface,
+      overflow: 'hidden',
       borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-      borderWidth: 1, borderColor: colors.border,
+      borderWidth: 1, borderColor: isLight ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.10)',
+    },
+    blurFill: { ...StyleSheet.absoluteFillObject },
+    tint: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: isLight ? 'rgba(255,255,255,0.40)' : 'rgba(22,26,31,0.42)',
     },
     handleWrap: { alignItems: 'center', paddingTop: space.sm, paddingBottom: space.xs },
     handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: space.xs },

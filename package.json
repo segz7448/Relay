@@ -11,7 +11,8 @@
     "parity": "node scripts/check-api-parity.mjs",
     "test:ui": "node --test utils/__tests__/*.test.mjs && node scripts/verify-approved-visual-contract.mjs && node scripts/verify-agent-console.mjs && node scripts/verify-agent-console-wiring.mjs && node scripts/verify-visible-controls.mjs && node scripts/two-peer-call-harness.mjs && node scripts/verify-route-targets.mjs",
     "start:dev-client": "expo start --dev-client",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "verify:release-regressions": "node scripts/verify-release-regressions.mjs"
   },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^10.0.0",

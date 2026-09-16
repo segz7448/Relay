@@ -1,7 +1,10 @@
 const app = require("./app.json");
 
 // GitHub Actions injects the deployed Cloudflare Worker URL while generating
-// the native Android project. Local development keeps the Worker dev default.
+// the native Android project. Local development keeps the Worker dev default
+// below — this is the only place that default lives (config.js reads it via
+// Constants.expoConfig.extra rather than hardcoding its own copy). If you
+// deploy your own Worker, replace this default with your own workers.dev URL.
 const cloudflareWorkerUrl =
   process.env.CLOUDFLARE_WORKER_URL || "https://botmanager-worker.ayiijumo.workers.dev";
 const googleServicesFile = process.env.GOOGLE_SERVICES_FILE;

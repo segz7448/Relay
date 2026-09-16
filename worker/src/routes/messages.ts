@@ -115,6 +115,59 @@ messages.get("/search", async (c) => {
   });
 });
 
+// ── POST /conversations/direct ──────────────────────────────────────────────
+// Return the existing DM for this pair, or create one inbox row per account.
+// The unique (user_id, ref_id) index makes retries converge on the same rows.
+messages.post("/direct", async (c) => {
+  const { userId } = c.get("user") as UserSession;
+  const { userId: peerId } = await c.req.json<{ userId?: string }>();
+  if (!peerId || peerId === userId) return c.json({ error: "invalid_peer" }, 400);
+  const db = c.env.DB as D1Database;
+  const [me, peer] = await Promise.all([
+    db.prepare("SELECT id,username,name FROM users WHERE id=?").bind(userId).first<any>(),
+    db.prepare("SELECT id,username,name,bio,photo_url FROM users WHERE id=?").bind(peerId).first<any>(),
+  ]);
+  if (!peer) return c.json({ error: "not_found" }, 404);
+  const prior = await db.prepare("SELECT * FROM conversations WHERE user_id=? AND kind='direct' AND ref_id=?")
+    .bind(userId, peerId).first<any>();
+  if (prior) {
+    // Upgrade direct rows created by older builds so delivery works both ways.
+    if (!prior.peer_conversation_id) {
+      const peerPrior = await db.prepare("SELECT * FROM conversations WHERE user_id=? AND kind='direct' AND ref_id=?")
+        .bind(peerId, userId).first<any>();
+      const peerConversationId = peerPrior?.id ?? uid();
+      const now = Date.now();
+      if (!peerPrior) await db.prepare(`INSERT INTO conversations
+        (id,user_id,kind,name,avatar_color,bio,ref_id,peer_conversation_id,created_at,updated_at)
+        VALUES(?,?,'direct',?,'#2E4A3E','',?,?,?,?)`)
+        .bind(peerConversationId,peerId,me?.name || me?.username || "Relay user",userId,prior.id,now,now).run();
+      await db.batch([
+        db.prepare("UPDATE conversations SET peer_conversation_id=? WHERE id=?").bind(peerConversationId,prior.id),
+        db.prepare("UPDATE conversations SET peer_conversation_id=? WHERE id=?").bind(prior.id,peerConversationId),
+      ]);
+      prior.peer_conversation_id = peerConversationId;
+    }
+    return c.json(convShape({ ...prior, peer_photo_url: peer.photo_url }));
+  }
+
+  const myId = uid();
+  const peerConversationId = uid();
+  const now = Date.now();
+  await db.batch([
+    db.prepare(`INSERT OR IGNORE INTO conversations
+      (id,user_id,kind,name,avatar_color,bio,ref_id,peer_conversation_id,created_at,updated_at)
+      VALUES(?,?,'direct',?,'#2E4A3E',?,?,?, ?,?)`)
+      .bind(myId,userId,peer.name || peer.username,peer.bio || "",peerId,peerConversationId,now,now),
+    db.prepare(`INSERT OR IGNORE INTO conversations
+      (id,user_id,kind,name,avatar_color,bio,ref_id,peer_conversation_id,created_at,updated_at)
+      VALUES(?,?,'direct',?,'#2E4A3E','',?,?, ?,?)`)
+      .bind(peerConversationId,peerId,me?.name || me?.username || "Relay user",userId,myId,now,now),
+  ]);
+  const conv = await db.prepare("SELECT c.*,u.photo_url AS peer_photo_url FROM conversations c LEFT JOIN users u ON u.id=c.ref_id WHERE c.user_id=? AND c.kind='direct' AND c.ref_id=?")
+    .bind(userId,peerId).first<any>();
+  return c.json(convShape(conv!), 201);
+});
+
 // ── GET /conversations/:id ────────────────────────────────────────────────────
 messages.get("/:id", async (c) => {
   const { userId } = c.get("user") as UserSession;
@@ -188,7 +241,7 @@ messages.get("/:id/messages", async (c) => {
         .bind(conv.id, limit)
         .all<any>();
 
-  const msgs = (rows.results ?? []).reverse().map(msgShape);
+  const msgs = (rows.results ?? []).reverse().map((m: any) => msgShape(m, userId));
   return c.json({ messages: msgs, hasMore: msgs.length === limit });
 });
 
@@ -205,11 +258,13 @@ messages.post("/:id/messages", async (c) => {
     attachmentType?: string;
     attachmentName?: string;
     attachmentSize?: number;
+    attachmentData?: unknown;
     durationSec?: number;
     replyToId?: string;
   }>();
 
-  if (!body.text && !body.attachmentUrl)
+  const structuredAttachment = validateAttachmentData(body.attachmentType, body.attachmentData);
+  if (!body.text && !body.attachmentUrl && !structuredAttachment)
     return c.json({ error: "text_or_attachment_required" }, 400);
 
   const id = uid();
@@ -217,9 +272,9 @@ messages.post("/:id/messages", async (c) => {
   await (c.env.DB as D1Database)
     .prepare(
       `INSERT INTO messages (id, conversation_id, sender_id, sender_name, text, kind,
-     attachment_url, attachment_type, attachment_name, attachment_size, duration_sec,
+     attachment_url, attachment_type, attachment_name, attachment_size, attachment_data, duration_sec,
      reply_to_id, reactions, read, delivered, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', 0, 1, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', 0, 1, ?)`,
     )
     .bind(
       id,
@@ -232,11 +287,28 @@ messages.post("/:id/messages", async (c) => {
       body.attachmentType ?? null,
       body.attachmentName ?? null,
       body.attachmentSize ?? null,
+      structuredAttachment ? JSON.stringify(structuredAttachment) : null,
       body.durationSec ?? null,
       body.replyToId ?? null,
       now,
     )
     .run();
+
+  // Mirror the same message into the peer's inbox row. Both rows carry the
+  // real sender id, so each client derives incoming/outgoing from identity.
+  if (conv.kind === "direct" && conv.peer_conversation_id) {
+    await (c.env.DB as D1Database)
+      .prepare(`INSERT INTO messages (id, conversation_id, sender_id, sender_name, text, kind,
+        attachment_url, attachment_type, attachment_name, attachment_size, attachment_data, duration_sec,
+        reply_to_id, reactions, read, delivered, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', 0, 1, ?)`)
+      .bind(uid(), conv.peer_conversation_id, userId, name, body.text ?? null,
+        body.kind ?? "text", body.attachmentUrl ?? null, body.attachmentType ?? null,
+        body.attachmentName ?? null, body.attachmentSize ?? null,
+        structuredAttachment ? JSON.stringify(structuredAttachment) : null, body.durationSec ?? null,
+        body.replyToId ?? null, now)
+      .run();
+  }
 
   // Update conversation last message
   const preview =
@@ -250,6 +322,12 @@ messages.post("/:id/messages", async (c) => {
     )
     .bind(preview, now, now, conv.id)
     .run();
+  if (conv.kind === "direct" && conv.peer_conversation_id) {
+    await (c.env.DB as D1Database)
+      .prepare("UPDATE conversations SET last_message=?,last_message_at=?,unread_count=unread_count+1,updated_at=? WHERE id=?")
+      .bind(preview, now, now, conv.peer_conversation_id)
+      .run();
+  }
 
   const msg = await (c.env.DB as D1Database)
     .prepare("SELECT * FROM messages WHERE id = ?")
@@ -263,7 +341,7 @@ messages.post("/:id/messages", async (c) => {
     );
   }
 
-  return c.json(msgShape(msg!), 201);
+  return c.json(msgShape(msg!, userId), 201);
 });
 
 // ── POST /conversations/:id/messages/:msgId/reactions ─────────────────────────
@@ -359,7 +437,26 @@ function searchMsgShape(m: any) {
   };
 }
 
-function msgShape(m: any) {
+function validateAttachmentData(type: string | undefined, value: unknown) {
+  if (type === "location" && value && typeof value === "object") {
+    const coords = (value as any).coords;
+    const lat = Number(coords?.lat), lng = Number(coords?.lng);
+    if (Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lng) && lng >= -180 && lng <= 180)
+      return { coords: { lat, lng } };
+  }
+  if (type === "contact" && value && typeof value === "object") {
+    const contact = (value as any).contact;
+    if (typeof contact?.name === "string" && contact.name.trim() && typeof contact?.phone === "string" && contact.phone.trim())
+      return { contact: { name: contact.name.trim().slice(0, 200), phone: contact.phone.trim().slice(0, 80) } };
+  }
+  return null;
+}
+function parseAttachmentData(raw: unknown) {
+  if (typeof raw !== "string" || !raw) return {};
+  try { const value = JSON.parse(raw); return value && typeof value === "object" ? value : {}; } catch { return {}; }
+}
+
+function msgShape(m: any, viewerId?: string) {
   const rawReactions = JSON.parse(m.reactions || "{}") as Record<
     string,
     string[]
@@ -377,14 +474,15 @@ function msgShape(m: any) {
     conversationId: m.conversation_id,
     senderId: m.sender_id,
     senderName: m.sender_name,
-    dir: m.sender_id ? "out" : "in",
+    dir: viewerId && m.sender_id === viewerId ? "out" : "in",
     text: m.text,
     kind: m.kind,
     attachmentUrl: m.attachment_url,
     attachmentType: m.attachment_type,
     attachmentName: m.attachment_name,
     attachmentSize: m.attachment_size,
-    attachment: m.attachment_url
+    attachmentData: parseAttachmentData(m.attachment_data),
+    attachment: m.attachment_url || m.attachment_data
       ? {
           uri: m.attachment_url,
           kind: m.attachment_type ?? m.kind ?? "file",
@@ -392,6 +490,7 @@ function msgShape(m: any) {
           size: m.attachment_size,
           ext: (m.attachment_name ?? "").split(".").pop(),
           duration: m.duration_sec,
+          ...parseAttachmentData(m.attachment_data),
         }
       : null,
     durationSec: m.duration_sec,

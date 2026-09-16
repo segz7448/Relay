@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Modal, Pressable, View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { type, space, radius, useTheme } from '../theme';
+import { type, space, useTheme } from '../theme';
+import GlassSurface from './GlassSurface';
 
 // The eight-way grid Telegram shows above the composer when you tap the
 // "+" — each option gets its own colored tile (not a flat icon list) so
@@ -49,31 +50,30 @@ export default function AttachmentSheet({ visible, onClose, onSelect, keys }) {
         <Animated.View
           style={[styles.wrap, { paddingBottom: insets.bottom + space.sm, opacity: rise, transform: [{ translateY }] }]}
         >
-          <View style={styles.card}>
-            <View style={styles.grid}>
-              {(keys ? OPTIONS.filter((o) => keys.includes(o.key)) : OPTIONS).map((opt) => (
-                <Pressable
-                  key={opt.key}
-                  onPress={() => {
-                    onClose?.();
-                    onSelect?.(opt.key);
-                  }}
-                  style={({ pressed }) => [styles.tile, pressed && { opacity: 0.6 }]}
-                >
-                  <View style={[styles.iconBox, { backgroundColor: opt.color }]}>
-                    <Ionicons name={opt.icon} size={24} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.tileLabel} numberOfLines={1}>{opt.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <GlassSurface variant="sheet" contentStyle={styles.grid}>
+            {(keys ? OPTIONS.filter((o) => keys.includes(o.key)) : OPTIONS).map((opt) => (
+              <Pressable
+                key={opt.key}
+                onPress={() => {
+                  onClose?.();
+                  onSelect?.(opt.key);
+                }}
+                style={({ pressed }) => [styles.tile, pressed && { opacity: 0.6 }]}
+              >
+                <View style={[styles.iconBox, { backgroundColor: opt.color }]}>
+                  <Ionicons name={opt.icon} size={24} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileLabel} numberOfLines={1}>{opt.label}</Text>
+              </Pressable>
+            ))}
+          </GlassSurface>
 
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.card, styles.cancelCard, pressed && { backgroundColor: colors.surfaceRaised }]}
-          >
-            <Text style={styles.cancelLabel}>Cancel</Text>
+          <Pressable onPress={onClose}>
+            {({ pressed }) => (
+              <GlassSurface variant="sheet" style={[styles.cancelCard, pressed && styles.cancelCardPressed]}>
+                <Text style={styles.cancelLabel}>Cancel</Text>
+              </GlassSurface>
+            )}
           </Pressable>
         </Animated.View>
       </Pressable>
@@ -85,13 +85,6 @@ function getStyles(colors) {
   return StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
     wrap: { paddingHorizontal: space.sm, gap: space.sm },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -113,6 +106,7 @@ function getStyles(colors) {
     },
     tileLabel: { ...type.small, color: colors.textSecondary },
     cancelCard: { alignItems: 'center', paddingVertical: space.md },
+    cancelCardPressed: { opacity: 0.7 },
     cancelLabel: { ...type.body, color: colors.accent, fontWeight: '700' },
   });
 }

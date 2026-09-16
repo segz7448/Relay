@@ -228,7 +228,7 @@ export default function PasscodeLockScreen() {
         actions={AUTO_LOCK_OPTIONS.map((opt) => ({
           key: opt,
           label: opt,
-          icon: passcode.autoLock === opt ? 'checkmark-circle' : 'ellipse-outline',
+          icon: passcode.autoLock === opt ? 'radio-button-on' : 'radio-button-off',
           onPress: () => setPasscodeMeta({ autoLock: opt }),
         }))}
       />

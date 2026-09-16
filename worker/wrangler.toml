@@ -26,6 +26,11 @@ id = "b1d847ab7a214b979cfa2646f780c644"
 # FCM_SERVER_KEY   — Firebase Cloud Messaging legacy server key
 
 [vars]
+# "*" allows any origin — fine for local dev. Before a real deploy, set this
+# to the actual production origin(s), comma-separated for more than one
+# (e.g. "https://app.example.com,https://example.com"). This is now read
+# per-request in src/index.ts, so changing it here changes what the API
+# actually accepts.
 CORS_ORIGIN = "*"
 
 [dev]

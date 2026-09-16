@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Modal, Pressable, View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { type, space, radius, useTheme } from '../theme';
+import { type, space, useTheme } from '../theme';
+import GlassSurface from './GlassSurface';
 
 // iOS action-sheet shape: a rounded card of actions (label left, icon
 // trailing, hairline separators between rows) sitting just above a
@@ -16,7 +17,7 @@ export default function ActionSheet({ visible, onClose, title, actions = [] }) {
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={[styles.wrap, { paddingBottom: insets.bottom + space.sm }]}>
-          <View style={styles.card}>
+          <GlassSurface variant="sheet">
             {title ? (
               <View style={styles.titleRow}>
                 <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -36,16 +37,17 @@ export default function ActionSheet({ visible, onClose, title, actions = [] }) {
                 ]}
               >
                 <Text style={[styles.label, a.destructive && { color: colors.danger }]}>{a.label}</Text>
-                <Ionicons name={a.icon} size={18} color={a.destructive ? colors.danger : colors.textSecondary} />
+                <Ionicons name={a.icon ?? 'ellipsis-horizontal-circle-outline'} size={18} color={a.destructive ? colors.danger : colors.textSecondary} />
               </Pressable>
             ))}
-          </View>
+          </GlassSurface>
 
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.card, styles.cancelCard, pressed && { backgroundColor: colors.surfaceRaised }]}
-          >
-            <Text style={styles.cancelLabel}>Cancel</Text>
+          <Pressable onPress={onClose}>
+            {({ pressed }) => (
+              <GlassSurface variant="sheet" style={[styles.cancelCard, pressed && styles.cancelCardPressed]}>
+                <Text style={styles.cancelLabel}>Cancel</Text>
+              </GlassSurface>
+            )}
           </Pressable>
         </View>
       </Pressable>
@@ -57,13 +59,6 @@ function getStyles(colors) {
   return StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
     wrap: { paddingHorizontal: space.sm, gap: space.sm },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
     titleRow: { paddingVertical: space.sm, paddingHorizontal: space.md, alignItems: 'center' },
     title: { ...type.small, color: colors.textMuted, fontWeight: '600' },
     row: {
@@ -73,6 +68,7 @@ function getStyles(colors) {
     rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
     label: { ...type.body, color: colors.textPrimary },
     cancelCard: { alignItems: 'center', paddingVertical: space.md },
+    cancelCardPressed: { opacity: 0.7 },
     cancelLabel: { ...type.body, color: colors.accent, fontWeight: '700' },
   });
 }

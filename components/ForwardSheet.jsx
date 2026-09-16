@@ -86,7 +86,7 @@ export default function ForwardSheet({ visible, messages, onClose, onSend }) {
             <Text style={styles.previewText} numberOfLines={1}>
               {messageCount > 1
                 ? `Forwarding ${messageCount} messages`
-                : messages[0]?.text || (messages[0]?.attachment ? `📎 ${messages[0].attachment.name || messages[0].attachment.kind}` : 'Forwarding message')}
+                : messages[0]?.text || (messages[0]?.attachment ? `Attachment: ${messages[0].attachment.name || messages[0].attachment.kind}` : 'Forwarding message')}
             </Text>
           </View>
         ) : null}

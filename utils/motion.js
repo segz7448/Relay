@@ -5,8 +5,8 @@
 // Pure RN `Animated` (matches the rest of the app — no reanimated/gesture-
 // handler dependency to add).
 
-import { useRef, useCallback, useEffect } from 'react';
-import { Animated, Easing } from 'react-native';
+import { useRef, useCallback, useEffect, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing } from 'react-native';
 
 // Springs tuned once, reused everywhere.
 export const springs = {
@@ -14,6 +14,17 @@ export const springs = {
   soft: { useNativeDriver: true, speed: 14, bounciness: 8 },
   gentle: { useNativeDriver: true, speed: 10, bounciness: 4 },
 };
+
+
+export function useReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => sub.remove();
+  }, []);
+  return reduced;
+}
 
 export const durations = {
   fast: 140,

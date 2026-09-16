@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import { Modal, Pressable, View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { type, space, radius, useTheme } from '../theme';
+import { type, space, useTheme } from '../theme';
 import { QUICK_REACTIONS } from '../utils/reactions';
 import { hapticTap, hapticSwitch } from '../utils/haptics';
+import GlassSurface from './GlassSurface';
 
 // Telegram's long-press-on-a-message sheet: a row of quick-tap reactions
 // (plus a "+" to the full picker) above a card of contextual actions
@@ -22,7 +23,7 @@ export default function MessageActionSheet({ visible, onClose, message, onReact,
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={[styles.wrap, { paddingBottom: insets.bottom + space.sm }]}>
-          <View style={styles.reactionRow}>
+          <GlassSurface variant="pill" style={styles.reactionRow}>
             {QUICK_REACTIONS.map((emoji) => {
               const isMine = mine?.emoji === emoji;
               return (
@@ -51,9 +52,9 @@ export default function MessageActionSheet({ visible, onClose, message, onReact,
             >
               <Ionicons name="add" size={20} color={colors.textSecondary} />
             </Pressable>
-          </View>
+          </GlassSurface>
 
-          <View style={styles.card}>
+          <GlassSurface variant="sheet">
             {actions.map((a, i) => (
               <Pressable
                 key={a.key ?? i}
@@ -68,16 +69,17 @@ export default function MessageActionSheet({ visible, onClose, message, onReact,
                 ]}
               >
                 <Text style={[styles.label, a.destructive && { color: colors.danger }]}>{a.label}</Text>
-                <Ionicons name={a.icon} size={18} color={a.destructive ? colors.danger : colors.textSecondary} />
+                <Ionicons name={a.icon ?? 'ellipsis-horizontal-circle-outline'} size={18} color={a.destructive ? colors.danger : colors.textSecondary} />
               </Pressable>
             ))}
-          </View>
+          </GlassSurface>
 
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.card, styles.cancelCard, pressed && { backgroundColor: colors.surfaceRaised }]}
-          >
-            <Text style={styles.cancelLabel}>Cancel</Text>
+          <Pressable onPress={onClose}>
+            {({ pressed }) => (
+              <GlassSurface variant="sheet" style={[styles.cancelCard, pressed && styles.cancelCardPressed]}>
+                <Text style={styles.cancelLabel}>Cancel</Text>
+              </GlassSurface>
+            )}
           </Pressable>
         </View>
       </Pressable>
@@ -92,10 +94,6 @@ function getStyles(colors) {
   reactionRow: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
     paddingHorizontal: space.sm,
     paddingVertical: 8,
     gap: 4,
@@ -104,13 +102,6 @@ function getStyles(colors) {
   reactionBtnMine: { backgroundColor: colors.accentDim },
   reactionEmoji: { fontSize: 21 },
   moreBtn: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: space.md, paddingHorizontal: space.md,
@@ -118,6 +109,7 @@ function getStyles(colors) {
   rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   label: { ...type.body, color: colors.textPrimary },
   cancelCard: { alignItems: 'center', paddingVertical: space.md },
+  cancelCardPressed: { opacity: 0.7 },
   cancelLabel: { ...type.body, color: colors.accent, fontWeight: '700' },
   });
 }

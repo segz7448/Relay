@@ -22,7 +22,7 @@ export function EmptyState({ icon = 'file-tray-outline', title, message, actionL
   return (
     <Animated.View style={[styles.wrap, style]}>
       <View style={styles.iconCircle}>
-        <Ionicons name={icon} size={28} color={colors.textMuted} />
+        <Ionicons name={icon} size={28} color={colors.textSecondary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}

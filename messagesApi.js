@@ -43,17 +43,9 @@ export async function searchFiles(query, kinds = []) {
   }
 }
 
-// There's no public cross-account directory to browse (accounts are
-// provisioned directly in D1 by the app owner — there's no social graph
-// to search). "Usernames" search is scoped to people you already have a
-// direct conversation with, matched against their name. (Implemented in
-// privacyApi.js — searchDirectory — since that's where every screen
-// imports it from; startDirectConversation lives here since it operates
-// on conversations.)
-export function startDirectConversation(user) {
-  // `user` here comes from searchDirectory() and is always an existing
-  // conversation, so "starting" it is just handing back its id.
-  return user.id;
+// Create or recover the shared direct conversation for this account pair.
+export async function startDirectConversation(user) {
+  return api.startDirectConversation(user.id);
 }
 
 // ── Forwarding ───────────────────────────────────────────────────────────────
@@ -68,6 +60,11 @@ export async function forwardMessage(message, targetIds, originName) {
       attachmentType: message.attachmentType,
       attachmentName: message.attachmentName,
       attachmentSize: message.attachmentSize,
+      attachmentData: message.attachment?.kind === 'location'
+        ? { coords: message.attachment.coords }
+        : message.attachment?.kind === 'contact'
+          ? { contact: message.attachment.contact }
+          : undefined,
       durationSec: message.durationSec,
     })
   ));

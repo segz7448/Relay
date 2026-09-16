@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
+import { Ionicons } from "@expo/vector-icons";
 import { AGENT_HOST, MODES, MODE_HELP, agentConfig } from "../agentConnection";
 import AgentConsoleIcon from "../components/AgentConsoleIcon";
 import {
@@ -78,11 +79,11 @@ export default function AgentConnection() {
   const config = secret
     ? configWithSecret(agentConfig, secret)
     : agentConfig("<ACCESS_KEY>");
-  async function copySecretValue(value, label = "Key") {
+  async function copySecretValue(value, label = "Key", marksSecret = true) {
     setCopyStatus("");
     try {
       await copyExactSecret(Clipboard, value);
-      setSecretCopied(true);
+      if (marksSecret) setSecretCopied(true);
       setCopyStatus(`${label} copied and verified`);
     } catch {
       setSecretCopied(false);
@@ -169,7 +170,7 @@ export default function AgentConnection() {
       <Panel style={s.endpoint}>
         <AgentConsoleIcon name="relay" />
         <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={s.endpointText}>
+          <Text selectable style={s.endpointText}>
             {AGENT_HOST.replace(/^https?:\/\//, "")}
           </Text>
           <Text style={s.micro}>TAP ICON TO COPY</Text>
@@ -177,9 +178,10 @@ export default function AgentConnection() {
         <IconButton
           name="copy"
           label="Copy Relay host"
-          onPress={() => Clipboard.setStringAsync(AGENT_HOST)}
+          onPress={() => copySecretValue(AGENT_HOST, "Relay endpoint", false)}
         />
       </Panel>
+      {!!copyStatus && !secret ? <Text accessibilityRole="alert" style={s.copyStatus}>{copyStatus}</Text> : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Generate ${mode} access key`}
@@ -405,7 +407,7 @@ export default function AgentConnection() {
                 style={s.ackRow}
               >
                 <View style={[s.checkbox, secretAcknowledged && s.checkboxOn]}>
-                  {secretAcknowledged ? <Text style={s.check}>✓</Text> : null}
+                  {secretAcknowledged ? <Ionicons name="checkmark" size={13} color="#110D09" style={s.check} /> : null}
                 </View>
                 <Text style={s.ackText}>
                   I saved the complete key another way and understand it cannot

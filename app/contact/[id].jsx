@@ -10,8 +10,8 @@ import { SkeletonCircle, SkeletonBox } from '../../components/Skeleton';
 import { ErrorState } from '../../components/StateViews';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/Toast';
-import { fetchConversation } from '../../messagesApi';
-import { fetchBlockedUsers, blockUser, unblockUser } from '../../privacyApi';
+import { fetchConversation, startDirectConversation } from '../../messagesApi';
+import { fetchBlockedUsers, blockUser, unblockUser, fetchDirectoryUser } from '../../privacyApi';
 import { useProfile } from '../../profileStore';
 
 const REPORT_REASONS = [
@@ -65,7 +65,7 @@ function Row({ icon, label, onPress, danger, value, colors, styles }) {
 }
 
 export default function ProfileScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, source } = useLocalSearchParams();
   const router = useRouter();
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -85,7 +85,7 @@ export default function ProfileScreen() {
       return;
     }
     try {
-      const c = await fetchConversation(id);
+      const c = source === 'directory' ? await fetchDirectoryUser(id) : await fetchConversation(id);
       if (!c) throw new Error('not_found');
       setConvo(c);
       const blockedList = await fetchBlockedUsers();
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
     } catch (e) {
       setPhase('error');
     }
-  }, [id, isSelf]);
+  }, [id, isSelf, source]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -226,7 +226,7 @@ export default function ProfileScreen() {
         ) : (
           <>
             <View style={styles.actionsRow}>
-              <ActionButton icon="chatbubble-ellipses" label="Message" colors={colors} styles={styles} onPress={() => router.push(`/conversation/${id}`)} />
+              <ActionButton icon="chatbubble-ellipses" label="Message" colors={colors} styles={styles} onPress={async () => { const c = source === 'directory' ? await startDirectConversation(convo) : convo; router.push(`/conversation/${c.id}`); }} />
               <ActionButton icon="share-outline" label="Share" colors={colors} styles={styles} onPress={handleShareProfile} />
             </View>
 

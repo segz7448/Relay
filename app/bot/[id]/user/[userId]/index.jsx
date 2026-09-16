@@ -248,8 +248,8 @@ export default function BotUserProfileScreen() {
             ) : null}
             {user.muted ? (
               <View style={[styles.badge, { backgroundColor: colors.surfaceRaised }]}>
-                <Ionicons name="notifications-off" size={12} color={colors.textMuted} />
-                <Text style={[styles.badgeText, { color: colors.textMuted }]}>Muted</Text>
+                <Ionicons name="notifications-off" size={12} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary }]}>Muted</Text>
               </View>
             ) : null}
           </View>

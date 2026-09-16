@@ -228,10 +228,12 @@ CREATE TABLE IF NOT EXISTS conversations (
   last_message_at INTEGER,
   online          INTEGER NOT NULL DEFAULT 0,
   ref_id          TEXT,            -- bot_id | other_user_id | server_id
+  peer_conversation_id TEXT,       -- paired inbox row for direct messages
   created_at      INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, last_message_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_direct_conversation_pair ON conversations(user_id, ref_id) WHERE kind = 'direct';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- MESSAGES (per conversation)
@@ -247,6 +249,7 @@ CREATE TABLE IF NOT EXISTS messages (
   attachment_type TEXT,
   attachment_name TEXT,
   attachment_size INTEGER,
+  attachment_data TEXT,           -- JSON for location/contact typed payloads
   duration_sec    INTEGER,
   reply_to_id     TEXT,
   reactions       TEXT NOT NULL DEFAULT '{}',

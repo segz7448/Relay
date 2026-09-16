@@ -6,10 +6,42 @@ const accounts = new Hono<{
   Variables: { user: UserSession };
 }>();
 accounts.use("/me", requireUserSession);
+accounts.use("/directory", requireUserSession);
+accounts.use("/directory/*", requireUserSession);
 accounts.use("/me/photo", requireUserSession);
 accounts.use("/me/push-token", requireUserSession);
 accounts.use("/me/sessions/*", requireUserSession);
 accounts.use("/me/sessions", requireUserSession);
+
+
+// Search people by exact username or display name. Password and session data
+// never cross this boundary. An empty query intentionally returns no users.
+accounts.get("/directory", async (c) => {
+  const { userId } = c.get("user") as UserSession;
+  const q = (c.req.query("q") ?? "").trim().replace(/^@/, "").toLowerCase();
+  if (!q) return c.json([]);
+  const like = `%${q.replace(/[%_]/g, "\\$&")}%`;
+  const rows = await (c.env.DB as D1Database)
+    .prepare(`SELECT id,username,name,bio,photo_url FROM users
+      WHERE id != ? AND (lower(username) LIKE ? ESCAPE '\\' OR lower(name) LIKE ? ESCAPE '\\')
+      ORDER BY CASE WHEN lower(username)=? THEN 0 ELSE 1 END, lower(username) LIMIT 25`)
+    .bind(userId, like, like, q)
+    .all<any>();
+  return c.json((rows.results ?? []).map(publicUser));
+});
+
+accounts.get("/directory/:userId", async (c) => {
+  const user = await (c.env.DB as D1Database)
+    .prepare("SELECT id,username,name,bio,photo_url FROM users WHERE id=?")
+    .bind(c.req.param("userId"))
+    .first<any>();
+  if (!user) return c.json({ error: "not_found" }, 404);
+  return c.json(publicUser(user));
+});
+
+function publicUser(user: any) {
+  return { id: user.id, username: user.username, name: user.name || user.username, bio: user.bio || "", photoUrl: user.photo_url ?? null };
+}
 
 // GET /accounts/me
 accounts.get("/me", async (c) => {

@@ -685,8 +685,18 @@ files.post("/upload", async (c) => {
 files.get("/:key{.+}", async (c) => {
   const { userId } = c.get("user") as UserSession;
   const key = c.req.param("key");
-  if (!key.startsWith(`uploads/${userId}/`))
-    return c.json({ error: "not_found" }, 404);
+  const ownerId = key.match(/^uploads\/([^/]+)\//)?.[1];
+  if (!ownerId) return c.json({ error: "not_found" }, 404);
+  if (ownerId !== userId) {
+    const allowed = await (c.env.DB as D1Database)
+      .prepare(`SELECT 1 AS ok FROM messages m
+        WHERE m.attachment_url=? AND m.conversation_id IN (
+          SELECT id FROM conversations WHERE user_id=? AND kind='direct' AND ref_id=?
+        ) LIMIT 1`)
+      .bind(c.req.url, userId, ownerId)
+      .first();
+    if (!allowed) return c.json({ error: "not_found" }, 404);
+  }
   const obj = await (c.env.BUCKET as R2Bucket).get(key);
   if (!obj) return c.json({ error: "not_found" }, 404);
   const headers = new Headers();

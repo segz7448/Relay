@@ -33,13 +33,7 @@ export async function getBot(id) {
 // commands and users, all merged into one object (matches the original
 // mock's shape of a bot carrying its own `commands`/`users` arrays).
 export async function fetchBot(id) {
-  const [bot, commands, users] = await Promise.all([
-    api.getBot(id),
-    api.listCommands(id).catch(() => []),
-    api.listBotUsers(id).catch(() => []),
-  ]);
-  if (!bot) return null;
-  return { ...bot, commands, users };
+  return api.getBot(id);
 }
 
 export async function createBot({

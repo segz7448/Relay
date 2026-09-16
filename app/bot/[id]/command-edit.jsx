@@ -115,7 +115,7 @@ export default function CommandEditScreen() {
   const actionActions = ACTION_TYPES.map((a) => ({
     key: a,
     label: a,
-    icon: a === actionType ? 'checkmark' : 'ellipse-outline',
+    icon: a === actionType ? 'radio-button-on' : 'radio-button-off',
     onPress: () => setActionType(a),
   }));
 

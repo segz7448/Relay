@@ -216,6 +216,10 @@ export const api = {
   deleteBotWebhook: (botId) =>
     request(`/bots/${botId}/webhook`, { method: "DELETE" }),
 
+  // People directory (session-authenticated, public profile fields only)
+  searchUsers: (q) => request(`/accounts/directory?q=${encodeURIComponent(q ?? "")}`),
+  getUser: (id) => request(`/accounts/directory/${encodeURIComponent(id)}`),
+
   // ── Conversations (Messages tab) ──────────────────────────────────────────
   listConversations: () => request("/conversations"),
   searchConversations: (q, kinds) =>
@@ -224,6 +228,8 @@ export const api = {
     ),
   createConversation: (body) =>
     request("/conversations", { method: "POST", body: JSON.stringify(body) }),
+  startDirectConversation: (userId) =>
+    request("/conversations/direct", { method: "POST", body: JSON.stringify({ userId }) }),
   getConversation: (id) => request(`/conversations/${id}`),
   updateConversation: (id, body) =>
     request(`/conversations/${id}`, {

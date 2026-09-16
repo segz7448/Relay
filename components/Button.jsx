@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text, View, Animated, Easing, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { type, space, radius, useTheme } from '../theme';
+import GlassSurface from './GlassSurface';
 
 function usePressScale(to = 0.96) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -91,16 +92,17 @@ export function SecondaryButton({ label, onPress, disabled, loading, icon, acces
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={{ disabled: inactive, busy: !!loading }}
-        style={[styles.secondary, inactive && { opacity: 0.5 }]}
       >
-        {loading ? (
-          <Dots color={colors.textPrimary} />
-        ) : (
-          <View style={styles.contentRow}>
-            {icon ? <Ionicons name={icon} size={17} color={colors.textPrimary} style={{ marginRight: space.sm }} /> : null}
-            <Text style={styles.secondaryLabel}>{label}</Text>
-          </View>
-        )}
+        <GlassSurface variant="card" style={[styles.secondary, inactive && { opacity: 0.5 }]} contentStyle={styles.secondaryContent}>
+          {loading ? (
+            <Dots color={colors.textPrimary} />
+          ) : (
+            <View style={styles.contentRow}>
+              {icon ? <Ionicons name={icon} size={17} color={colors.textPrimary} style={{ marginRight: space.sm }} /> : null}
+              <Text style={styles.secondaryLabel}>{label}</Text>
+            </View>
+          )}
+        </GlassSurface>
       </Pressable>
     </Animated.View>
   );
@@ -130,7 +132,6 @@ export function TextLink({ label, onPress, disabled, muted, align = 'center', ac
 // Small circular icon button — used for the back chevron on auth sub-screens.
 export function IconGhostButton({ icon, onPress, size = 38, label = 'Back' }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
   const { scale, onPressIn, onPressOut } = usePressScale(0.9);
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -140,9 +141,13 @@ export function IconGhostButton({ icon, onPress, size = 38, label = 'Back' }) {
         onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel={label}
-        style={[styles.ghost, { width: size, height: size, borderRadius: size / 2 }]}
       >
-        <Ionicons name={icon} size={19} color={colors.textPrimary} />
+        <GlassSurface
+          variant="well"
+          style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name={icon} size={19} color={colors.textPrimary} />
+        </GlassSurface>
       </Pressable>
     </Animated.View>
   );
@@ -159,22 +164,13 @@ function getStyles(colors) {
     },
     primaryLabel: { ...type.h2, color: colors.onAccent },
     disabled: { backgroundColor: colors.accentDim },
-    secondary: {
-      borderRadius: radius.md,
+    secondary: {},
+    secondaryContent: {
       paddingVertical: space.md,
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     secondaryLabel: { ...type.h2, color: colors.textPrimary },
     link: { ...type.small, fontWeight: '600' },
-    ghost: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
     dotsRow: { flexDirection: 'row', gap: 5, paddingVertical: 2 },
     dot: { width: 6, height: 6, borderRadius: 3 },
   });

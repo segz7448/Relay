@@ -117,10 +117,17 @@ export default function ConversationRow({
   const subtitle = convo.typing
     ? "typing…"
     : convo.attachment?.type === "voice"
-      ? `🎙 Voice message, ${convo.attachment.duration}`
+      ? `Voice message, ${convo.attachment.duration}`
       : convo.attachment?.type === "file"
-        ? `📎 ${convo.attachment.name}`
+        ? convo.attachment.name
         : convo.lastMessage || "No messages yet";
+
+  const subtitleIcon =
+    !convo.typing && convo.attachment?.type === "voice"
+      ? "mic"
+      : !convo.typing && convo.attachment?.type === "file"
+        ? "attach"
+        : null;
 
   const showOnlineDot =
     convo.online && (convo.kind === "direct" || convo.kind === "bot");
@@ -209,6 +216,14 @@ export default function ConversationRow({
             </View>
 
             <View style={styles.bottomLine}>
+              {subtitleIcon ? (
+                <Ionicons
+                  name={subtitleIcon}
+                  size={13}
+                  color={convo.unread > 0 ? colors.textSecondary : colors.textMuted}
+                  style={styles.subtitleIcon}
+                />
+              ) : null}
               <Text
                 style={[
                   styles.subtitle,
@@ -323,6 +338,7 @@ function getStyles(colors) {
       justifyContent: "space-between",
       marginTop: 3,
     },
+    subtitleIcon: { marginRight: 4 },
     subtitle: {
       ...type.body,
       color: colors.textMuted,

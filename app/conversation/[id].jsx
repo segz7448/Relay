@@ -35,6 +35,7 @@ import ContactPickerSheet from "../../components/ContactPickerSheet";
 import ForwardSheet from "../../components/ForwardSheet";
 import { extensionOf, mediaKindOf, guessMime } from "../../utils/fileTypes";
 import { toggleReaction } from "../../utils/reactions";
+import { absoluteApiUrl, authHeaders } from "../../utils/attachments";
 import { SkeletonListRow } from "../../components/Skeleton";
 import { useToast } from "../../components/Toast";
 import { useConfirm } from "../../components/ConfirmDialog";
@@ -141,6 +142,16 @@ function statusLabel(convo) {
   return "last seen recently";
 }
 
+function normalizeMessageAttachment(message) {
+  if (!message?.attachment) return message;
+  const attachment = { ...message.attachment };
+  if (attachment.uri) {
+    attachment.uri = absoluteApiUrl(attachment.uri);
+    attachment.headers = authHeaders();
+  }
+  return { ...message, attachment };
+}
+
 export default function ConversationScreen() {
   const { id, highlight, prefill } = useLocalSearchParams();
   const router = useRouter();
@@ -175,7 +186,7 @@ export default function ConversationScreen() {
       .catch(() => null)
       .then(setConvo);
     fetchMessages(id)
-      .then(setMessages)
+      .then((rows) => setMessages(rows.map(normalizeMessageAttachment)))
       .catch(() => toast.error("Couldn't load this conversation"))
       .finally(() => setLoadingMessages(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,13 +279,14 @@ export default function ConversationScreen() {
         attachmentUrl = uploaded.url;
       }
       const saved = await sendMessage(id, {
-        text: "",
+        kind: attachment.kind,
         attachmentUrl,
         attachmentType: attachment.kind,
         attachmentName: attachment.name,
         attachmentSize: attachment.size,
+        attachmentData: attachment.kind === "location" ? { coords: attachment.coords } : attachment.kind === "contact" ? { contact: attachment.contact } : undefined,
       });
-      setMessages((list) => [...list, saved]);
+      setMessages((list) => [...list, normalizeMessageAttachment(saved)]);
     } catch (error) {
       toast.error(error.message || "Couldn't send attachment");
     }
@@ -345,7 +357,7 @@ export default function ConversationScreen() {
         text:
           message.text ||
           (message.attachment
-            ? `📎 ${message.attachment.name || message.attachment.kind}`
+            ? `Attachment: ${message.attachment.name || message.attachment.kind}`
             : "Message"),
       });
     },
@@ -515,9 +527,9 @@ export default function ConversationScreen() {
             <Pressable
               style={styles.identity}
               onPress={() => {
-                if (convo?.kind === "bot") router.push(`/bot/${convo.id}`);
+                if (convo?.kind === "bot") router.push(`/bot/${convo.refId || convo.id}`);
                 else if (convo?.kind === "direct")
-                  router.push(`/contact/${convo.id}`);
+                  router.push(`/contact/${convo.refId || convo.id}?source=directory`);
               }}
             >
               <Avatar uri={convo?.photoUrl} name={convo?.name} size={34} />
@@ -557,7 +569,7 @@ export default function ConversationScreen() {
                 <Pressable
                   hitSlop={8}
                   style={styles.headerBtn}
-                  onPress={() => router.push(`/bot/${convo.id}`)}
+                  onPress={() => router.push(`/bot/${convo.refId || convo.id}`)}
                 >
                   <Ionicons
                     name="hardware-chip-outline"
@@ -570,9 +582,9 @@ export default function ConversationScreen() {
                 hitSlop={8}
                 style={styles.headerBtn}
                 onPress={() => {
-                  if (convo?.kind === "bot") router.push(`/bot/${convo.id}`);
+                  if (convo?.kind === "bot") router.push(`/bot/${convo.refId || convo.id}`);
                   else if (convo?.kind === "direct")
-                    router.push(`/contact/${convo.id}`);
+                    router.push(`/contact/${convo.refId || convo.id}?source=directory`);
                 }}
               >
                 <Ionicons

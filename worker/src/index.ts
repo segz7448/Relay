@@ -27,10 +27,19 @@ export interface Env {
 const app = new Hono<{ Bindings: Env }>();
 
 // ─── Global middleware ────────────────────────────────────────────────────────
+// CORS_ORIGIN (Worker var, see wrangler.toml) is "*" in dev and a
+// comma-separated allowlist (e.g. "https://app.example.com,https://example.com")
+// in production. Read per-request (not hardcoded) so the same binding that
+// docs/production-readiness.md gates deployment on actually takes effect.
 app.use(
   "*",
   cors({
-    origin: "*",
+    origin: (origin, c) => {
+      const configured = (c.env.CORS_ORIGIN ?? "*").trim();
+      if (configured === "*") return origin || "*";
+      const allowed = configured.split(",").map((o) => o.trim()).filter(Boolean);
+      return allowed.includes(origin) ? origin : null;
+    },
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
     maxAge: 86400,

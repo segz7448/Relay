@@ -51,7 +51,7 @@ export default function ApiKeyCreateScreen() {
   const scopeActions = SCOPES.map((s) => ({
     key: s,
     label: s,
-    icon: s === scope ? 'checkmark' : 'ellipse-outline',
+    icon: s === scope ? 'radio-button-on' : 'radio-button-off',
     onPress: () => setScope(s),
   }));
 

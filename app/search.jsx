@@ -4,11 +4,12 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type, space, radius, avatarPalette, useTheme } from '../theme';
-import { fetchConversations, searchMessages, searchFiles, startDirectConversation } from '../messagesApi';
+import { fetchConversations, searchMessages, searchFiles } from '../messagesApi';
 import { searchDirectory } from '../privacyApi';
 import { fetchServers } from '../serversApi';
 import { fileVisualFor } from '../utils/fileTypes';
 import ActionSheet from '../components/ActionSheet';
+import Avatar from '../components/Avatar';
 
 const TABS = [
   { key: 'users', label: 'Users' },
@@ -146,8 +147,7 @@ export default function SearchScreen() {
   }
 
   function openDirectoryUser(user) {
-    const id = startDirectConversation(user);
-    router.push(`/conversation/${id}`);
+    router.push(`/contact/${user.id}?source=directory`);
   }
 
   function openServer(id) {
@@ -157,15 +157,15 @@ export default function SearchScreen() {
   const dateSheetActions = DATE_OPTIONS.map((d) => ({
     key: d.key,
     label: d.label,
-    icon: d.key === dateKey ? 'checkmark-circle' : 'ellipse-outline',
+    icon: d.key === dateKey ? 'radio-button-on' : 'radio-button-off',
     onPress: () => setDateKey(d.key),
   }));
   const senderSheetActions = [
-    { key: 'any', label: 'Any sender', icon: !senderId ? 'checkmark-circle' : 'ellipse-outline', onPress: () => setSenderId(null) },
+    { key: 'any', label: 'Any sender', icon: !senderId ? 'radio-button-on' : 'radio-button-off', onPress: () => setSenderId(null) },
     ...conversations.map((c) => ({
       key: c.id,
       label: c.name,
-      icon: senderId === c.id ? 'checkmark-circle' : 'ellipse-outline',
+      icon: senderId === c.id ? 'radio-button-on' : 'radio-button-off',
       onPress: () => setSenderId(c.id),
     })),
   ];
@@ -311,9 +311,7 @@ export default function SearchScreen() {
               onPress={() => openDirectoryUser(item)}
               style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.surfaceRaised }]}
             >
-              <View style={[styles.avatar, { backgroundColor: hashColor(item.id) }]}>
-                <Text style={styles.avatarText}>{initials(item.name)}</Text>
-              </View>
+              <Avatar uri={item.photoUrl} name={item.name} size={40} />
               <View style={{ flex: 1, marginLeft: space.md }}>
                 <Text style={styles.resultName} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.resultSnippet} numberOfLines={1}>@{item.username}</Text>

@@ -98,7 +98,7 @@ export default function CreateBotScreen() {
   const categoryActions = CATEGORIES.map((c) => ({
     key: c,
     label: c,
-    icon: c === category ? 'checkmark' : 'ellipse-outline',
+    icon: c === category ? 'radio-button-on' : 'radio-button-off',
     onPress: () => setCategory(c),
   }));
 

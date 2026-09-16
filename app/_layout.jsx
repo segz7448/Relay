@@ -1,8 +1,10 @@
 import { useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, TextInput } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../theme";
+import { useFonts } from "expo-font";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { AccountsProvider, useAccounts } from "../accountsStore";
 import { NotificationsProvider } from "../notifications";
 import { CallProvider } from "../callStore";
@@ -13,6 +15,27 @@ import { ToastProvider } from "../components/Toast";
 import { ConfirmProvider } from "../components/ConfirmDialog";
 import { StatusBurstProvider } from "../components/StatusBurst";
 import { OfflineBanner } from "../components/StateViews";
+import PremiumBackdrop from "../components/PremiumBackdrop";
+
+function FontAndScaleGate({ children }) {
+  const [fontsLoaded, fontError] = useFonts({
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+  });
+
+  if (!fontsLoaded && !fontError) return null;
+  return children;
+}
+
+// Relay's dense controls are designed for phone widths. Respect modest text
+// scaling without letting a device-wide large-font setting push controls past
+// the viewport or overlap the floating navigation.
+for (const Component of [Text, TextInput]) {
+  Component.defaultProps = {
+    ...(Component.defaultProps || {}),
+    maxFontSizeMultiplier: 1.15,
+  };
+}
 
 function RootLayoutNav() {
   const router = useRouter();
@@ -46,10 +69,11 @@ function RootLayoutNav() {
         <OfflineBanner />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: colors.bg },
+            animation: "slide_from_right",
+            headerStyle: { backgroundColor: "transparent" },
             headerTintColor: colors.textPrimary,
             headerShadowVisible: false,
-            contentStyle: { backgroundColor: colors.bg },
+            contentStyle: { backgroundColor: "transparent" },
             animation: "default",
             animationDuration: 260,
           }}
@@ -265,7 +289,11 @@ export default function RootLayout() {
               <ToastProvider>
                 <ConfirmProvider>
                   <StatusBurstProvider>
-                    <RootLayoutNav />
+                    <FontAndScaleGate>
+                      <PremiumBackdrop>
+                        <RootLayoutNav />
+                      </PremiumBackdrop>
+                    </FontAndScaleGate>
                   </StatusBurstProvider>
                 </ConfirmProvider>
               </ToastProvider>

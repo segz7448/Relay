@@ -23,7 +23,7 @@ export default function NotificationsSettingsScreen() {
   const soundActions = SOUND_OPTIONS.map((s) => ({
     key: s,
     label: s,
-    icon: s === prefs.sound ? 'checkmark-circle' : 'ellipse-outline',
+    icon: s === prefs.sound ? 'radio-button-on' : 'radio-button-off',
     onPress: () => setPref('sound', s),
   }));
 

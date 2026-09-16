@@ -14,6 +14,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { radius, space, type, useTheme } from '../theme';
 import { hapticBurst, hapticTap } from '../utils/haptics';
 import { springs } from '../utils/motion';
@@ -95,14 +96,21 @@ export function useConfirm() {
 }
 
 function ConfirmModal({ state, busy, scale, opacity, onConfirm, onCancel }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, scheme), [colors, scheme]);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onCancel}>
       <Animated.View style={[styles.backdrop, { opacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={busy ? undefined : onCancel} />
         <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
+          <BlurView
+            pointerEvents="none"
+            intensity={scheme === 'light' ? 40 : 50}
+            tint={scheme === 'light' ? 'light' : 'dark'}
+            style={StyleSheet.absoluteFill}
+          />
+          <View pointerEvents="none" style={styles.tint} />
           {state.title ? <Text style={styles.title}>{state.title}</Text> : null}
           {state.message ? <Text style={styles.message}>{state.message}</Text> : null}
           <View style={styles.buttonRow}>
@@ -164,19 +172,28 @@ function PulsingDot({ color }) {
   return <Animated.View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color, opacity: v }} />;
 }
 
-function getStyles(colors) {
+function getStyles(colors, scheme) {
+  const isLight = scheme === 'light';
   return StyleSheet.create({
     backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: space.xl },
     card: {
       width: '100%',
       maxWidth: 300,
-      backgroundColor: colors.surfaceRaised,
       borderRadius: radius.lg,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: isLight ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.10)',
       overflow: 'hidden',
       paddingTop: space.lg,
       paddingHorizontal: space.lg,
+      shadowColor: '#000',
+      shadowOpacity: isLight ? 0.1 : 0.35,
+      shadowRadius: 26,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 12,
+    },
+    tint: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: isLight ? 'rgba(255,255,255,0.42)' : 'rgba(24,28,33,0.46)',
     },
     title: { ...type.h2, color: colors.textPrimary, textAlign: 'center' },
     message: { ...type.small, color: colors.textSecondary, textAlign: 'center', marginTop: space.xs, marginBottom: space.md },

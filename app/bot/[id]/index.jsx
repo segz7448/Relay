@@ -13,6 +13,7 @@ import { useConfirm } from '../../../components/ConfirmDialog';
 import { useStatusBurst } from '../../../components/StatusBurst';
 import { hapticTap } from '../../../utils/haptics';
 import { fetchBot, fetchBotConversations, setBotEnabled, deleteBot } from '../../../botsApi';
+import { fetchConversations } from '../../../messagesApi';
 
 function hashColor(seed) {
   let h = 0;
@@ -47,18 +48,21 @@ export default function BotDetailScreen() {
 
   const [bot, setBot] = useState(null);
   const [inbox, setInbox] = useState({ count: 0, unread: 0 });
+  const [messageConversationId, setMessageConversationId] = useState(null);
   const [phase, setPhase] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [b, convos] = await Promise.all([
+      const [b, convos, conversations] = await Promise.all([
         fetchBot(id),
         fetchBotConversations(id).catch(() => []),
+        fetchConversations(),
       ]);
       if (!b) throw new Error('bot_not_found');
       setBot(b);
+      setMessageConversationId(conversations.find((c) => c.kind === 'bot' && c.refId === id)?.id ?? null);
       setInbox({
         count: convos.length,
         unread: convos.reduce((sum, c) => sum + (Number(c.unreadCount) || 0), 0),
@@ -195,7 +199,7 @@ export default function BotDetailScreen() {
         <View style={styles.card}>
           <Row icon="terminal-outline" label="Commands" value={`${bot.commands.length}`} onPress={() => router.push(`/bot/${id}/commands`)} styles={styles} colors={colors} />
           <View style={styles.hairline} />
-          <Row icon="chatbubbles-outline" label="Messages" onPress={() => router.push(`/conversation/${id}`)} styles={styles} colors={colors} />
+          <Row icon="chatbubbles-outline" label="Messages" onPress={() => messageConversationId ? router.push(`/conversation/${messageConversationId}`) : router.push(`/bot/${id}/conversations`)} styles={styles} colors={colors} />
           <View style={styles.hairline} />
           <Row
             icon="chatbox-ellipses-outline"

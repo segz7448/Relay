@@ -11,6 +11,8 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} unreadCount={unreadCount} />}
       screenOptions={{
+        animation: "fade",
+        sceneStyle: { backgroundColor: "transparent" },
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { ...type.h1, fontWeight: "700" },

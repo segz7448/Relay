@@ -19,20 +19,13 @@ export async function unblockUser(id) {
   return fetchBlockedUsers();
 }
 
-// There's no public cross-account directory to browse (accounts are
-// provisioned directly in D1 by the app owner — there's no social graph
-// to search). Search is scoped to people you already have a direct
-// conversation with, matched against their name.
+// Search the account directory. Results contain public profile fields only.
 export async function searchDirectory(query) {
-  const convs = await fetchConversations();
-  const direct = convs.filter((c) => c.kind === 'direct');
-  const q = (query ?? '').trim().toLowerCase();
-  const matched = q ? direct.filter((c) => c.name.toLowerCase().includes(q)) : direct;
-  return matched.map((c) => ({ id: c.id, name: c.name, username: slugify(c.name) }));
+  return api.searchUsers(query);
 }
 
-function slugify(name) {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+export async function fetchDirectoryUser(id) {
+  return api.getUser(id);
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────

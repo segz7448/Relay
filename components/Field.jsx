@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, Animated, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { type, space, radius, useTheme } from '../theme';
 
@@ -26,8 +27,8 @@ export default function Field({
   onFocus,
   onBlur,
 }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, scheme), [colors, scheme]);
 
   const [revealed, setRevealed] = useState(false);
   const focusAnim = useRef(new Animated.Value(0)).current;
@@ -49,6 +50,13 @@ export default function Field({
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <Animated.View style={[styles.inputRow, { borderColor }]}>
+        <BlurView
+          pointerEvents="none"
+          intensity={scheme === 'light' ? 26 : 34}
+          tint={scheme === 'light' ? 'light' : 'dark'}
+          style={StyleSheet.absoluteFill}
+        />
+        <View pointerEvents="none" style={styles.tint} />
         {icon ? <Ionicons name={icon} size={17} color={colors.textMuted} style={styles.icon} /> : null}
         <TextInput
           value={value}
@@ -80,17 +88,20 @@ export default function Field({
   );
 }
 
-const makeStyles = (colors) => StyleSheet.create({
+const makeStyles = (colors, scheme) => StyleSheet.create({
   wrap: { marginBottom: space.lg },
   label: { ...type.small, color: colors.textSecondary, marginBottom: space.xs, fontWeight: '600' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
+    overflow: 'hidden',
+  },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: scheme === 'light' ? 'rgba(255,255,255,0.34)' : 'rgba(22,26,31,0.36)',
   },
   icon: { marginRight: space.sm },
   input: { flex: 1, color: colors.textPrimary, fontSize: 14, paddingVertical: space.md },

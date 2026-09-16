@@ -11,9 +11,9 @@ import * as SecureStore from './utils/secureStore';
 
 // Dark — the original "control-room" palette.
 export const darkColors = {
-  bg: '#14181C',
-  surface: '#1C2126',
-  surfaceRaised: '#242B31',
+  bg: 'rgba(13,18,24,0.60)',
+  surface: 'rgba(28,33,38,0.62)',
+  surfaceRaised: 'rgba(42,50,58,0.70)',
   border: '#2C333A',
   borderBright: '#3A434B',
 
@@ -42,9 +42,9 @@ export const darkColors = {
 // with a Telegram-style light chat surface: white/near-white bubbles,
 // pale gray screen background.
 export const lightColors = {
-  bg: '#F2F3F5',
-  surface: '#FFFFFF',
-  surfaceRaised: '#ECEEF1',
+  bg: 'rgba(242,245,249,0.64)',
+  surface: 'rgba(255,255,255,0.58)',
+  surfaceRaised: 'rgba(236,239,244,0.68)',
   border: '#DFE2E6',
   borderBright: '#CBD0D6',
 
